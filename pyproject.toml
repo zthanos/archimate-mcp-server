@@ -9,7 +9,8 @@ authors = [
 ]
 dependencies = [
   "mcp>=1.0.0",
-  "pydantic>=2.7.0"
+  "pydantic>=2.7.0",
+  "pytest",
 ]
 
 [project.optional-dependencies]
