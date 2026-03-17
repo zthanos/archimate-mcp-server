@@ -3,6 +3,8 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass, field
 
+from .config import LayoutConfig
+
 
 # ---------------------------------------------------------------------------
 # Data structures
@@ -26,26 +28,28 @@ class PlacementGrid:
     """
     cells: list[GridCell] = field(default_factory=list)
     _occupied: dict[tuple[int, int], str] = field(default_factory=dict, repr=False)
+    _element_pos: dict[str, tuple[int, int]] = field(default_factory=dict, repr=False)
 
     def place(self, row: int, col: int, element_id: str) -> int:
         """Place element at (row, col), shifting right until free. Returns actual col."""
         while (row, col) in self._occupied:
             col += 1
         self._occupied[(row, col)] = element_id
+        self._element_pos[element_id] = (row, col)
         self.cells.append(GridCell(row=row, col=col, element_id=element_id))
         return col
 
+    def _update_pos(self, element_id: str, row: int, col: int) -> None:
+        """Update the position index after a cell move."""
+        self._element_pos[element_id] = (row, col)
+
     def col_of(self, element_id: str) -> int | None:
-        for cell in self.cells:
-            if cell.element_id == element_id:
-                return cell.col
-        return None
+        pos = self._element_pos.get(element_id)
+        return pos[1] if pos else None
 
     def row_of(self, element_id: str) -> int | None:
-        for cell in self.cells:
-            if cell.element_id == element_id:
-                return cell.row
-        return None
+        pos = self._element_pos.get(element_id)
+        return pos[0] if pos else None
 
     def elements_in_row(self, row: int) -> list[GridCell]:
         return sorted([c for c in self.cells if c.row == row], key=lambda c: c.col)
@@ -204,13 +208,61 @@ def build_smart_grid(
                     continue
                 # Shift blocking element right until clear of arrow columns
                 new_col = max(arrow_cols) + 1
-                # Remove old placement
                 grid._occupied.pop((mid_row, col))
                 for i, cell in enumerate(grid.cells):
                     if cell.element_id == blocking_id:
                         grid.cells[i] = GridCell(row=mid_row, col=new_col, element_id=blocking_id)
                         break
                 grid._occupied[(mid_row, new_col)] = blocking_id
+                grid._update_pos(blocking_id, mid_row, new_col)
+
+
+    # --- Pass 3: Same-row reordering ---
+    # For each row, reorder elements so that same-row arrows connect adjacent cells.
+    # Strategy: find the most-connected element in the row and place it centrally,
+    # then arrange its same-row neighbors beside it.
+    same_row_neighbors: dict[str, list[str]] = defaultdict(list)
+    for rel in relationships:
+        sr = element_row.get(rel.source)
+        tr = element_row.get(rel.target)
+        if sr is not None and tr is not None and sr == tr:
+            same_row_neighbors[rel.source].append(rel.target)
+            same_row_neighbors[rel.target].append(rel.source)
+
+    for layer_id in active_layers:
+        row = layer_to_row[layer_id]
+        cells = grid.elements_in_row(row)
+        if len(cells) < 3:
+            continue  # No reordering needed for < 3 elements
+
+        element_ids = [c.element_id for c in cells]
+
+        # Find element with most same-row connections → goes in center
+        def same_row_degree(eid):
+            return len([n for n in same_row_neighbors.get(eid, []) if n in element_ids])
+
+        center = max(element_ids, key=same_row_degree)
+        if same_row_degree(center) == 0:
+            continue  # No same-row relationships, skip
+
+        # Build new order: neighbors left/right of center, rest at edges
+        neighbors = [n for n in same_row_neighbors.get(center, []) if n in element_ids]
+        others = [e for e in element_ids if e != center and e not in neighbors]
+
+        # Arrange: others_left | neighbors_left | center | neighbors_right | others_right
+        left_neighbors = neighbors[:len(neighbors)//2]
+        right_neighbors = neighbors[len(neighbors)//2:]
+        new_order = others[:len(others)//2] + left_neighbors + [center] + right_neighbors + others[len(others)//2:]
+
+        # Reassign columns
+        grid._occupied = {k: v for k, v in grid._occupied.items() if k[0] != row}
+        for new_col, eid in enumerate(new_order):
+            grid._occupied[(row, new_col)] = eid
+            grid._update_pos(eid, row, new_col)
+            for i, cell in enumerate(grid.cells):
+                if cell.element_id == eid:
+                    grid.cells[i] = GridCell(row=row, col=new_col, element_id=eid)
+                    break
 
     return grid
 
@@ -220,11 +272,18 @@ def _preferred_col(
     cross_layer_neighbors: dict[str, list[str]],
     grid: PlacementGrid,
     row: int,
+    same_row_neighbors: dict[str, list[str]] | None = None,
 ) -> int:
     neighbors = cross_layer_neighbors.get(element_id, [])
     placed_cols = [grid.col_of(n) for n in neighbors if grid.col_of(n) is not None]
 
-    if not placed_cols:
+    # Also consider same-row (same-layer) neighbors for spread
+    same_row_placed = []
+    if same_row_neighbors:
+        sr_neighbors = same_row_neighbors.get(element_id, [])
+        same_row_placed = [grid.col_of(n) for n in sr_neighbors if grid.col_of(n) is not None]
+
+    if not placed_cols and not same_row_placed:
         # No neighbors placed yet — use next free col in this row
         occupied = {c.col for c in grid.cells if c.row == row}
         col = 0
@@ -232,9 +291,19 @@ def _preferred_col(
             col += 1
         return col
 
-    # Median of neighbor columns
-    placed_cols.sort()
-    return placed_cols[len(placed_cols) // 2]
+    if placed_cols:
+        # Align with cross-layer neighbor (median)
+        placed_cols.sort()
+        preferred = placed_cols[len(placed_cols) // 2]
+        # If a same-row neighbor is right next to us, spread by 1 extra col
+        if same_row_placed:
+            for sr_col in same_row_placed:
+                if abs(preferred - sr_col) <= 1:
+                    preferred = max(same_row_placed) + 2  # leave a gap
+        return preferred
+
+    # Only same-row neighbors placed — go next to them with a gap
+    return max(same_row_placed) + 2
 
 
 # ---------------------------------------------------------------------------
@@ -245,45 +314,36 @@ def _preferred_col(
 class GridMetrics:
     col_widths: dict[int, int]
     row_heights: dict[int, int]
-    h_gap: int = 40
-    v_gap: int = 160
-    margin_left: int = 80
-    margin_top: int = 60
+    cfg: LayoutConfig
 
     def x_of(self, col: int) -> int:
-        x = self.margin_left
+        x = self.cfg.margin_left
         for c in range(col):
-            x += self.col_widths.get(c, 200) + self.h_gap
+            x += self.col_widths.get(c, self.cfg.node_w) + self.cfg.h_gap
         return x
 
     def y_of(self, row: int) -> int:
-        y = self.margin_top
+        y = self.cfg.margin_top
         for r in range(row):
-            y += self.row_heights.get(r, 60) + self.v_gap
+            y += self.row_heights.get(r, self.cfg.node_h) + self.cfg.layer_v_gap
         return y
 
 
 def compute_grid_metrics(
     grid: PlacementGrid,
     node_sizes: dict[str, tuple[int, int]],
-    h_gap: int = 40,
-    v_gap: int = 160,
-    margin_left: int = 80,
-    margin_top: int = 60,
+    cfg: LayoutConfig,
 ) -> GridMetrics:
     col_widths: dict[int, int] = defaultdict(int)
     row_heights: dict[int, int] = defaultdict(int)
 
     for cell in grid.cells:
-        w, h = node_sizes.get(cell.element_id, (200, 60))
-        col_widths[cell.col] = max(col_widths[cell.col], w)
+        w, h = node_sizes.get(cell.element_id, (cfg.node_w, cfg.node_h))
+        col_widths[cell.col]  = max(col_widths[cell.col],  w)
         row_heights[cell.row] = max(row_heights[cell.row], h)
 
     return GridMetrics(
         col_widths=dict(col_widths),
         row_heights=dict(row_heights),
-        h_gap=h_gap,
-        v_gap=v_gap,
-        margin_left=margin_left,
-        margin_top=margin_top,
+        cfg=cfg,
     )
