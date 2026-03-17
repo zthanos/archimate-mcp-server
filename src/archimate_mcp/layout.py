@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 from .config import DEFAULT_CONFIG, LayoutConfig
 from .grid import build_smart_grid, compute_grid_metrics
 from .models import ArchimateModel, BendPoint, Connection, Element, Node, View
+from .ports import Edge, Port, assign_ports
 
 if TYPE_CHECKING:
     pass
@@ -109,7 +110,24 @@ def _segment_hits_rect(
             return False
         return not (max(x1, x2) < l or min(x1, x2) > r)
 
-    return False
+    # Diagonal segment — use separating axis test (AABB vs line segment)
+    # Fast reject: bounding boxes don't overlap
+    seg_l, seg_r = min(x1, x2), max(x1, x2)
+    seg_t, seg_b = min(y1, y2), max(y1, y2)
+    if seg_r < l or seg_l > r or seg_b < t or seg_t > b:
+        return False
+
+    # Check if any corner of the rect is on opposite sides of the line
+    # Line equation: (y2-y1)*x - (x2-x1)*y + (x2-x1)*y1 - (y2-y1)*x1 = 0
+    dx, dy = x2 - x1, y2 - y1
+    def _sign(px: int, py: int) -> float:
+        return dy * px - dx * py + dx * y1 - dy * x1
+
+    corners = [_sign(l, t), _sign(r, t), _sign(l, b), _sign(r, b)]
+    if all(c > 0 for c in corners) or all(c < 0 for c in corners):
+        return False   # rect entirely on one side of the line → no intersection
+
+    return True
 
 
 def _path_hits_obstacle(
@@ -148,188 +166,88 @@ def _path_is_clear(
 # Routing
 # ---------------------------------------------------------------------------
 
-def _is_cross_layer(source: Node, target: Node) -> bool:
-    """True when vertical distance dominates — arrow spans multiple layers."""
-    return abs(_cy(target) - _cy(source)) > abs(_cx(target) - _cx(source))
-
-
-def _try_minimal_route(
-    source: Node,
-    target: Node,
+def _route_between_ports(
+    src_port: Port,
+    tgt_port: Port,
     obstacles: list[Node],
     cfg: LayoutConfig,
-) -> list[tuple[int, int]] | None:
-    """Try straight or single-bend routes first."""
-    sy, ty = _cy(source), _cy(target)
-    if _cx(target) >= _cx(source):
-        start = (_right(source) + cfg.anchor_offset, sy)
-        end   = (_left(target)  - cfg.anchor_offset, ty)
-    else:
-        start = (_left(source)  - cfg.anchor_offset, sy)
-        end   = (_right(target) + cfg.anchor_offset, ty)
-
-    candidates = [
-        [start, end],
-        [start, (end[0],   start[1]), end],
-        [start, (start[0], end[1]),   end],
-    ]
-    for candidate in candidates:
-        norm = _normalize(candidate)
-        if _path_is_clear(norm, obstacles, source.id, target.id, cfg.route_padding):
-            return norm
-    return None
-
-
-def _route_cross_layer(
-    source: Node,
-    target: Node,
-    obstacles: list[Node],
-    cfg: LayoutConfig,
-    pair_index: int,
-    side: str,
 ) -> list[BendPoint]:
-    """Route a vertical-dominant (cross-layer) arrow via left/right lane."""
-    lane_extra = cfg.lane_base + (pair_index // 2) * cfg.lane_step
-    sy, ty = _cy(source), _cy(target)
-
-    if ty >= sy:
-        start = (_cx(source), _bottom(source) + cfg.anchor_offset)
-        end   = (_cx(target), _top(target)    - cfg.anchor_offset)
-    else:
-        start = (_cx(source), _top(source)    - cfg.anchor_offset)
-        end   = (_cx(target), _bottom(target) + cfg.anchor_offset)
-
-    left_base  = min(_left(source),  _left(target))
-    right_base = max(_right(source), _right(target))
-    try_left_first = (side == "top")
-
-    for i in range(12):
-        extra = lane_extra + i * cfg.lane_step
-        for try_left in ([True, False] if try_left_first else [False, True]):
-            lane_x = (left_base - extra) if try_left else (right_base + extra)
-            candidate = _normalize([start, (lane_x, start[1]), (lane_x, end[1]), end])
-            if _path_is_clear(candidate, obstacles, source.id, target.id, cfg.route_padding):
-                return _to_bendpoints(candidate)
-
-    # Fallback: straight dogleg
-    return _to_bendpoints(_normalize([start, (_cx(source), _cy(target)), end]))
-
-
-def _route_same_layer(
-    source: Node,
-    target: Node,
-    obstacles: list[Node],
-    cfg: LayoutConfig,
-    pair_index: int,
-    pair_count: int,
-    side: str,
-) -> list[BendPoint]:
-    """Route a horizontal-dominant (same-layer) arrow with staggered anchors."""
-    lane_extra   = cfg.lane_base + (pair_index // 2) * cfg.lane_step
-    anchor_off_y = int((pair_index - (pair_count - 1) / 2) * cfg.lane_step)
-    sy, ty       = _cy(source), _cy(target)
-
-    if _cx(target) >= _cx(source):
-        start = (_right(source) + cfg.anchor_offset, sy + anchor_off_y)
-        end   = (_left(target)  - cfg.anchor_offset, ty + anchor_off_y)
-        x_dir = 1
-    else:
-        start = (_left(source)  - cfg.anchor_offset, sy + anchor_off_y)
-        end   = (_right(target) + cfg.anchor_offset, ty + anchor_off_y)
-        x_dir = -1
-
-    # Prefer straight line if unobstructed
-    if pair_count > 1:
-        if _path_is_clear([start, end], obstacles, source.id, target.id, cfg.route_padding):
-            return _to_bendpoints([start, end])
-
-    top_lane    = min(_top(source),    _top(target))    - lane_extra + anchor_off_y
-    bottom_lane = max(_bottom(source), _bottom(target)) + lane_extra + anchor_off_y
-    out_x = start[0] + x_dir * lane_extra
-    in_x  = end[0]   - x_dir * lane_extra
-
-    if side == "top":
-        ordered_lanes = [top_lane, bottom_lane]
-    else:
-        ordered_lanes = [bottom_lane, top_lane]
-
-    candidates: list[list[tuple[int, int]]] = [
-        [start, (out_x, start[1]), (out_x, lane), (in_x, lane), (in_x, end[1]), end]
-        for lane in ordered_lanes
-    ] + [
-        _normalize([start, (end[0],   start[1]), end]),
-        _normalize([start, (start[0], end[1]),   end]),
-    ]
-
-    for candidate in candidates:
-        norm = _normalize(candidate)
-        if _path_is_clear(norm, obstacles, source.id, target.id, cfg.route_padding):
-            return _to_bendpoints(norm)
-
-    return _to_bendpoints(_normalize(candidates[0]))
-
-
-def _route_connection(
-    source: Node,
-    target: Node,
-    obstacles: list[Node],
-    cfg: LayoutConfig,
-    pair_index: int = 0,
-    pair_count: int = 1,
-    direction: int = 1,
-) -> list[BendPoint]:
-    # Single relationship: try clean minimal route first
-    if pair_count == 1:
-        minimal = _try_minimal_route(source, target, obstacles, cfg)
-        if minimal is not None:
-            return _to_bendpoints(minimal)
-
-    side = "top" if (pair_index + (0 if direction == 1 else 1)) % 2 == 0 else "bottom"
-
-    if _is_cross_layer(source, target):
-        return _route_cross_layer(source, target, obstacles, cfg, pair_index, side)
-    else:
-        return _route_same_layer(source, target, obstacles, cfg, pair_index, pair_count, side)
-
-
-# ---------------------------------------------------------------------------
-# Pair routing order
-# ---------------------------------------------------------------------------
-
-def _pair_key(a: str, b: str) -> tuple[str, str]:
-    return (min(a, b), max(a, b))
-
-
-def _build_pair_route_order(
-    model: ArchimateModel,
-    element_to_node: dict[str, str],
-    nesting_rel_ids: set[str],
-    rel_type_filter: set[str] | None,
-) -> dict[str, tuple[int, int, int]]:
     """
-    Returns rel_id -> (pair_index, pair_count, direction).
-    direction: 1 = canonical, -1 = reverse.
+    Find bendpoints between two pre-assigned port points.
+    The port points are included as the first and last bendpoints
+    so Archi respects the exact entry/exit position on each node.
     """
-    grouped: dict[tuple[str, str], list[tuple[str, str, str]]] = defaultdict(list)
+    start = (src_port.point.x, src_port.point.y)
+    end   = (tgt_port.point.x, tgt_port.point.y)
 
-    for rel in model.relationships:
-        if rel.id in nesting_rel_ids:
-            continue
-        if rel_type_filter is not None and rel.type not in rel_type_filter:
-            continue
-        src_nid = element_to_node.get(rel.source)
-        tgt_nid = element_to_node.get(rel.target)
-        if src_nid and tgt_nid:
-            grouped[_pair_key(src_nid, tgt_nid)].append((rel.id, src_nid, tgt_nid))
+    # Always include explicit anchor points just outside the node edge
+    # so Archi uses the correct slot position
+    anchor_gap = cfg.anchor_offset
 
-    result: dict[str, tuple[int, int, int]] = {}
-    for (canon_a, canon_b), items in grouped.items():
-        items = sorted(items, key=lambda x: x[0])  # stable sort by rel_id
-        for idx, (rel_id, src_nid, tgt_nid) in enumerate(items):
-            direction = 1 if (src_nid, tgt_nid) == (canon_a, canon_b) else -1
-            result[rel_id] = (idx, len(items), direction)
+    if src_port.edge == Edge.E:
+        p_start = (start[0] + anchor_gap, start[1])
+    elif src_port.edge == Edge.W:
+        p_start = (start[0] - anchor_gap, start[1])
+    elif src_port.edge == Edge.S:
+        p_start = (start[0], start[1] + anchor_gap)
+    else:  # N
+        p_start = (start[0], start[1] - anchor_gap)
 
-    return result
+    if tgt_port.edge == Edge.W:
+        p_end = (end[0] - anchor_gap, end[1])
+    elif tgt_port.edge == Edge.E:
+        p_end = (end[0] + anchor_gap, end[1])
+    elif tgt_port.edge == Edge.N:
+        p_end = (end[0], end[1] - anchor_gap)
+    else:  # S
+        p_end = (end[0], end[1] + anchor_gap)
+
+    # Try direct route between the two anchor points
+    for candidate in [
+        [p_start, p_end],
+        [p_start, (p_end[0],   p_start[1]), p_end],   # H → V
+        [p_start, (p_start[0], p_end[1]),   p_end],   # V → H
+    ]:
+        norm = _normalize(candidate)
+        if _path_is_clear(norm, obstacles,
+                          src_port.node_id, tgt_port.node_id, cfg.route_padding):
+            # Wrap with explicit port anchor points as first/last bendpoints
+            full = _normalize([start] + norm + [end])
+            return _to_bendpoints(full)
+
+    # Route around obstacles via lateral lanes
+    is_vertical = src_port.edge in (Edge.N, Edge.S)
+
+    if is_vertical:
+        left_base  = min(p_start[0], p_end[0]) - cfg.lane_base
+        right_base = max(p_start[0], p_end[0]) + cfg.lane_base
+        for i in range(12):
+            for lane_x in [left_base  - i * cfg.lane_step,
+                           right_base + i * cfg.lane_step]:
+                candidate = _normalize([
+                    p_start, (lane_x, p_start[1]), (lane_x, p_end[1]), p_end
+                ])
+                if _path_is_clear(candidate, obstacles,
+                                  src_port.node_id, tgt_port.node_id, cfg.route_padding):
+                    full = _normalize([start] + candidate + [end])
+                    return _to_bendpoints(full)
+    else:
+        top_base    = min(p_start[1], p_end[1]) - cfg.lane_base
+        bottom_base = max(p_start[1], p_end[1]) + cfg.lane_base
+        for i in range(12):
+            for lane_y in [top_base    - i * cfg.lane_step,
+                           bottom_base + i * cfg.lane_step]:
+                candidate = _normalize([
+                    p_start, (p_start[0], lane_y), (p_end[0], lane_y), p_end
+                ])
+                if _path_is_clear(candidate, obstacles,
+                                  src_port.node_id, tgt_port.node_id, cfg.route_padding):
+                    full = _normalize([start] + candidate + [end])
+                    return _to_bendpoints(full)
+
+    # Fallback
+    fallback = _normalize([start, p_start, (p_start[0], p_end[1]), p_end, end])
+    return _to_bendpoints(fallback)
 
 
 # ---------------------------------------------------------------------------
@@ -469,35 +387,34 @@ def _build_connections_with_routing(
     cfg: LayoutConfig,
     rel_type_filter: set[str] | None = None,
 ) -> list[Connection]:
-    pair_order = _build_pair_route_order(
-        model, element_to_node, nesting_rel_ids, rel_type_filter
-    )
-    connections: list[Connection] = []
-
+    # Collect visible connections
+    visible: list[tuple[str, str, str]] = []
     for rel in model.relationships:
         if rel.id in nesting_rel_ids:
             continue
         if rel_type_filter is not None and rel.type not in rel_type_filter:
             continue
-
         src_nid = element_to_node.get(rel.source)
         tgt_nid = element_to_node.get(rel.target)
-        if not src_nid or not tgt_nid:
-            continue
+        if src_nid and tgt_nid:
+            visible.append((rel.id, src_nid, tgt_nid))
 
-        src_node = node_by_id.get(src_nid)
-        tgt_node = node_by_id.get(tgt_nid)
-        if not src_node or not tgt_node:
-            continue
+    # Assign ports — determines exit/entry points for every connection
+    port_map = assign_ports(node_by_id, visible)
 
-        pair_index, pair_count, direction = pair_order.get(rel.id, (0, 1, 1))
-        bendpoints = _route_connection(
-            src_node, tgt_node, top_level_nodes, cfg,
-            pair_index=pair_index, pair_count=pair_count, direction=direction,
+    connections: list[Connection] = []
+    for rel_id, src_nid, tgt_nid in visible:
+        ports = port_map.get(rel_id)
+        if not ports:
+            continue
+        src_port, tgt_port = ports
+
+        bendpoints = _route_between_ports(
+            src_port, tgt_port, top_level_nodes, cfg
         )
         connections.append(Connection(
-            id=f"{view_id}_conn_{rel.id}",
-            relationship_id=rel.id,
+            id=f"{view_id}_conn_{rel_id}",
+            relationship_id=rel_id,
             source_node_id=src_nid,
             target_node_id=tgt_nid,
             bendpoints=bendpoints,
