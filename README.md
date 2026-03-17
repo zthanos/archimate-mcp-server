@@ -1,292 +1,200 @@
-# 🧠 ArchiMate MCP Server
+# ArchiMate MCP Server
 
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Python](https://img.shields.io/badge/python-3.11+-blue.svg)]()
-[![MCP](https://img.shields.io/badge/MCP-compatible-green.svg)]()
-[![Status](https://img.shields.io/badge/status-active-success.svg)]()
-
-An MCP (Model Context Protocol) server that enables AI agents to **create, update, validate, repair, and export ArchiMate models** from plain text.
-
-> Turn natural language into **valid ArchiMate diagrams** — iteratively.
+A deterministic ArchiMate 3.1 modeling engine with optional LLM/MCP integration for generating architecture diagrams from plain text.
 
 ---
 
-# ⚡ 30-Second Quick Start
+## Overview
+
+This project provides a structured, testable, and export-ready engine for creating ArchiMate models programmatically.
+
+It supports:
+
+* Model validation (ArchiMate rules)
+* Automatic view generation (layout engine)
+* Export to ArchiMate Open Exchange Format (XML)
+* Integration with LLM agents via MCP skills
+
+
+Unlike diagramming tools, this project focuses on:
+
+- deterministic model generation
+- validation-first architecture modeling
+- LLM-assisted but engine-controlled workflows
+---
+
+## Features
+
+* Deterministic model generation
+* Built-in validation engine
+* Auto-layout for diagrams
+* XML export compatible with Archi
+* Testable and CI-ready
+* Extensible via patch/command model
+
+---
+
+## Installation
 
 ```bash
 git clone https://github.com/zthanos/archimate-mcp-server
 cd archimate-mcp-server
 uv sync
-uv run server.py
-```
-
-Then describe your architecture:
-
-```text
-Customer uses a portal that calls an account service
-```
-
-👉 The agent will generate a valid ArchiMate model, validate it, and prepare it for export.
-
----
-
-# 🚀 What This Solves
-
-Creating ArchiMate diagrams manually is:
-
-* slow
-* error-prone
-* hard to maintain
-
-This project enables:
-
-✅ **Conversational modeling**
-✅ **Validation-first architecture design**
-✅ **Agent-driven diagram generation**
-
----
-
-# ✨ Features
-
-* 🧠 Plain text → ArchiMate model
-* 🔁 Iterative updates via natural language
-* ✅ Validation against ArchiMate rules
-* 🛠 Automatic repair & improvement suggestions
-* 📊 View generation (diagram-ready)
-* 📦 Export to Archi Open Exchange Format (XML)
-* 🤖 Designed for AI agents (VS Code / Copilot / MCP)
-
----
-
-# ⚡ Quick Example
-
-### Input
-
-```text
-Customer uses a portal that calls an account service
-```
-
-### Output
-
-* Valid ArchiMate model
-* Relationships validated
-* Diagram views generated
-* Exportable XML for Archi
-
----
-
-### Then refine it:
-
-```text
-Add a database
-Change Account to ApplicationService
-Remove Kubernetes and use a VM
-```
-
-➡️ The model is updated — no need to recreate anything.
-
----
-
-# 🧠 Core Workflow
-
-```text
-text → facts → validate → (fix) → views → export
-```
-
-### Key Rule
-
-> ❗ No validation → No export
-
----
-
-# 🧩 MCP Integration
-
-This server is built for **agentic workflows**.
-
-The agent:
-
-* maintains the model in context
-* applies updates from user intent
-* ensures correctness before export
-
-👉 Perfect for:
-
-* VS Code agents
-* Copilot extensions
-* custom LLM pipelines
-
----
-
-# 📦 Installation
-
-```bash
-git clone https://github.com/zthanos/archimate-mcp-server
-cd archimate-mcp-server
-
-uv sync
 ```
 
 ---
 
-# ▶️ Run Server
+## ⚡ 30-Second Quick Start
 
 ```bash
 uv run server.py
 ```
 
+Example input:
+
+```text
+Customer uses a portal that calls an account service
+```
+
+The system will:
+
+1. Extract ArchiMate elements
+2. Validate relationships
+3. Generate diagram views
+4. Export XML
+
 ---
 
-# 🧪 CLI Usage
+### End-to-End Example
+
+Input:
+"Customer uses a portal that calls an account service"
+
+Output:
+- 3 elements
+- 2 relationships
+- Application + Integration views
+- Exported XML (Archi-compatible)
+
+## Usage
+
+CLI export example:
 
 ```bash
-uv run archimate-mcp-cli export \
-  src/archimate_mcp/examples/sample_model.json \
-  --output out/model.xml
+uv run archimate-mcp-cli export src/archimate_mcp/examples/sample_model.json --output out/model.xml
+```
+
+Import into Archi:
+
+```
+File → Import → Open Exchange File
 ```
 
 ---
 
-# 🛠 Available Tools
+## 🧪 Example Output
 
-## Extraction
+The following diagrams are generated automatically from the sample model.
 
-* `extract_archimate_facts_from_text`
-* `extract_archimate_facts_from_code_summary`
+### Application View
 
-## Validation
+![Application View](docs/images/application-view.png)
 
-* `validate_archimate_facts`
+### Integration View
 
-## Repair / Improvement
+![Integration View](docs/images/integration-view.png)
 
-* `normalize_relationship_types`
-* `detect_architecture_smells`
-* `suggest_missing_relationships`
+### Technology View
 
-## Views
-
-* `generate_archimate_views`
-
-## Export
-
-* `generate_archimate_exchange_file`
+![Technology View](docs/images/technology-view.png)
 
 ---
 
-# 🔁 Example Workflow
+## Skills (MCP / Copilot Integration)
 
-## 1. Create
+This repository includes optional "skills" for LLM agent integration.
 
-```text
-Customer uses a portal that calls a payment service
+Location:
+
+```
+skills/
 ```
 
-## 2. Update
+These are NOT part of the core engine.
 
-```text
-Add database and connect service to it
-```
+### Responsibilities
 
-## 3. Export
+Skills:
 
-```text
-Export this model
-```
+* Define prompts
+* Orchestrate workflows
+* Call engine functions
+
+Core engine (`src/archimate_mcp`):
+
+* Deterministic
+* Testable
+* LLM-agnostic
+
+Example skill usage:
+
+- Input: plain text architecture description
+- Output: validated ArchiMate model + XML
 
 ---
 
-# ⚠️ Rules & Constraints
+## Project Structure
 
-* Models must follow ArchiMate specification
-* Invalid relationships are rejected
-* Export is blocked if validation fails
-* Views generated only after validation
-
----
-
-# 📁 Project Structure
-
-```text
-src/
-  archimate_mcp/
-    server.py
-    cli.py
-    exporter.py
-    layout.py
-    validation.py
-    examples/
-
-SKILL.md
-archimate-rules.md
-example-models.md
 ```
-
+src/archimate_mcp/   Core engine
+skills/              LLM/MCP layer
+tests/               Test suite
 ```
 
 ---
 
-# 🧪 Example Output
+## Development
 
-✔ Archi-compatible XML  
-✔ Import directly into Archi:
+Run tests:
 
-```
-
-File → Import → Open Exchange Format
-
+```bash
+uv run pytest -q
 ```
 
 ---
 
-# 🎯 Design Principles
+## Testing Strategy
 
-### 1. Agent-first
-Built for LLM agents, not manual editing.
-
-### 2. Iterative modeling
-The model evolves through conversation.
-
-### 3. Validation-first
-Invalid architecture is blocked early.
-
-### 4. Deterministic output
-Stable, tool-compatible results.
+* Schema validation (Pydantic)
+* Relationship validation
+* Layout and routing checks
+* Export validation
+* End-to-end workflow tests
 
 ---
 
-# 🚧 Roadmap
+## Roadmap
 
-- [ ] Persistent model storage
-- [ ] Multi-view generation (Application / Technology / Business)
-- [ ] Smarter layout (edge routing improvements)
-- [ ] Live diagram preview (SVG)
-- [ ] Round-trip editing with Archi
+- [x] Core modeling engine
+- [x] Validation layer
+- [x] Layout engine
+- [x] XML export
+- [x] Basic MCP skills
 
----
+- [ ] Patch/command system (in progress)
+- [ ] Incremental model updates
+- [ ] Advanced routing (collision-free)
+- [ ] Multi-view consistency
+- [ ] API / service layer
 
-# 🤝 Contributing
+## Contributing
 
-Contributions welcome.
-
-Focus areas:
-- extraction accuracy
-- validation rules
-- layout improvements
-- MCP integrations
-
----
-
-# 📚 References
-
-- ArchiMate Specification (The Open Group)
-- Archi Tool: https://www.archimatetool.com/
-- Archi Import/Export Plugins:
-  https://github.com/archimatetool/archi/wiki/Developing-Import-and-Export-Plug-ins
+* Use feature branches
+* Open PRs for changes
+* Ensure tests pass
 
 ---
 
-# 📄 License
+## License
 
 MIT License
-
-```
