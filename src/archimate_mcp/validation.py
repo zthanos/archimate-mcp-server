@@ -1,34 +1,91 @@
 from __future__ import annotations
 
-from .models import ArchimateModel, Node
+from .models import ArchimateModel
 
 
 ALLOWED_RELATIONSHIPS: set[tuple[str, str, str]] = {
-    ("ApplicationService", "Serving", "ApplicationComponent"),
-    ("ApplicationComponent", "Access", "DataObject"),
-    ("BusinessActor", "Assignment", "BusinessProcess"),
-    ("ApplicationComponent", "Composition", "ApplicationComponent"),
-    ("ApplicationComponent", "Aggregation", "ApplicationComponent"),
-    ("ApplicationComponent", "Association", "ApplicationComponent"),
-    ("ApplicationComponent", "Flow", "ApplicationComponent"),
-    ("BusinessProcess", "Triggering", "BusinessProcess"),
-    ("ApplicationComponent", "Realization", "ApplicationService"),
-    ("Node", "Composition", "SystemSoftware"),
-    ("SystemSoftware", "Composition", "ApplicationComponent"),
-    ("Device", "Composition", "Node"),
+    # ---------------------------------------------------------------------------
+    # Business layer
+    # ---------------------------------------------------------------------------
+    ("BusinessActor",   "Assignment",   "BusinessProcess"),
+    ("BusinessActor",   "Assignment",   "BusinessActor"),
+    ("BusinessActor",   "Association",  "BusinessActor"),
+    ("BusinessActor",   "Association",  "BusinessProcess"),
+    ("BusinessProcess", "Triggering",   "BusinessProcess"),
+    ("BusinessProcess", "Flow",         "BusinessProcess"),
+    ("BusinessProcess", "Association",  "BusinessProcess"),
+    ("BusinessProcess", "Composition",  "BusinessProcess"),
+    ("BusinessProcess", "Aggregation",  "BusinessProcess"),
+
+    # ---------------------------------------------------------------------------
+    # Application layer — components
+    # ---------------------------------------------------------------------------
+    ("ApplicationComponent", "Composition",  "ApplicationComponent"),
+    ("ApplicationComponent", "Aggregation",  "ApplicationComponent"),
+    ("ApplicationComponent", "Association",  "ApplicationComponent"),
+    ("ApplicationComponent", "Flow",         "ApplicationComponent"),
+    ("ApplicationComponent", "Realization",  "ApplicationService"),
+    ("ApplicationComponent", "Access",       "DataObject"),
+    ("ApplicationComponent", "Serving",      "ApplicationComponent"),
+    ("ApplicationComponent", "Serving",      "BusinessProcess"),
+    ("ApplicationComponent", "Serving",      "BusinessActor"),
+
+    # Application layer — services
+    ("ApplicationService",   "Serving",      "ApplicationComponent"),
+    ("ApplicationService",   "Serving",      "BusinessProcess"),
+    ("ApplicationService",   "Serving",      "BusinessActor"),
+    ("ApplicationService",   "Association",  "ApplicationService"),
+    ("ApplicationService",   "Flow",         "ApplicationService"),
+    ("ApplicationService",   "Access",       "DataObject"),
+
+    # Application layer — data
+    ("DataObject",           "Association",  "DataObject"),
+    ("DataObject",           "Composition",  "DataObject"),
+    ("DataObject",           "Aggregation",  "DataObject"),
+
+    # ---------------------------------------------------------------------------
+    # Technology layer — devices
+    # ---------------------------------------------------------------------------
+    ("Device",           "Composition",  "Device"),
+    ("Device",           "Aggregation",  "Device"),
+    ("Device",           "Association",  "Device"),
+    ("Device",           "Composition",  "Node"),
+    ("Device",           "Aggregation",  "Node"),
+    ("Device",           "Composition",  "SystemSoftware"),
+    ("Device",           "Serving",      "Device"),
+    ("Device",           "Serving",      "ApplicationComponent"),
+
+    # Technology layer — nodes
+    ("Node",             "Composition",  "Node"),
+    ("Node",             "Aggregation",  "Node"),
+    ("Node",             "Association",  "Node"),
+    ("Node",             "Composition",  "SystemSoftware"),
+    ("Node",             "Aggregation",  "SystemSoftware"),
+    ("Node",             "Composition",  "ApplicationComponent"),   # deployment
+    ("Node",             "Serving",      "ApplicationComponent"),
+    ("Node",             "Serving",      "Node"),
+
+    # Technology layer — system software
+    ("SystemSoftware",   "Composition",  "SystemSoftware"),
+    ("SystemSoftware",   "Aggregation",  "SystemSoftware"),
+    ("SystemSoftware",   "Association",  "SystemSoftware"),
+    ("SystemSoftware",   "Composition",  "ApplicationComponent"),
+    ("SystemSoftware",   "Serving",      "ApplicationComponent"),
+    ("SystemSoftware",   "Serving",      "SystemSoftware"),
+
+    # ---------------------------------------------------------------------------
+    # Cross-layer
+    # ---------------------------------------------------------------------------
+    ("ApplicationComponent", "Realization",  "BusinessProcess"),
+    ("ApplicationService",   "Realization",  "BusinessProcess"),
+    ("Node",                 "Realization",  "ApplicationComponent"),
+    ("SystemSoftware",       "Realization",  "ApplicationComponent"),
+    ("Device",               "Realization",  "ApplicationComponent"),
 }
 
 
 class ValidationError(Exception):
     pass
-
-
-def _collect_node_ids(nodes: list[Node], result: set[str]) -> None:
-    """Recursively collect all node ids, including nested children."""
-    for node in nodes:
-        result.add(node.id)
-        if node.children:
-            _collect_node_ids(node.children, result)
 
 
 def validate_model(model: ArchimateModel) -> list[str]:
@@ -75,31 +132,21 @@ def validate_model(model: ArchimateModel) -> list[str]:
             errors.append(f"Duplicate view id: {view.id}")
         view_ids.add(view.id)
 
-        # Collect all node ids recursively (handles nested/container nodes)
         node_ids: set[str] = set()
-        _collect_node_ids(view.nodes, node_ids)
+        for node in view.nodes:
+            if node.id in node_ids:
+                errors.append(f"Duplicate node id in view {view.id}: {node.id}")
+            node_ids.add(node.id)
 
-        # Validate each node recursively
-        def _validate_nodes(nodes: list[Node]) -> None:
-            for node in nodes:
-                # Skip container nodes (element_id is None)
-                if node.element_id is not None and node.element_id not in element_map:
-                    errors.append(
-                        f"View {view.id} references unknown element: {node.element_id}"
-                    )
-                if node.w <= 0 or node.h <= 0:
-                    errors.append(f"View {view.id} node {node.id} has invalid size")
-                if node.children:
-                    _validate_nodes(node.children)
+            if node.element_id not in element_map:
+                errors.append(
+                    f"View {view.id} references unknown element: {node.element_id}"
+                )
 
-        _validate_nodes(view.nodes)
+            if node.w <= 0 or node.h <= 0:
+                errors.append(f"View {view.id} node {node.id} has invalid size")
 
         for connection in view.connections:
-            for bp in connection.bendpoints:
-                if not isinstance(bp.x, int) or not isinstance(bp.y, int):
-                    errors.append(
-                        f"View {view.id} connection {connection.id} has invalid bendpoint"
-                    )
             if connection.relationship_id not in relationship_ids:
                 errors.append(
                     f"View {view.id} connection {connection.id} unknown relationship: "

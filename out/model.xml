@@ -75,27 +75,24 @@
         <node identifier="view_default_application_node_device_vm" x="100" y="700" w="220" h="70" xsi:type="Element" elementRef="device_vm"/>
         <connection identifier="view_default_application_conn_rel_assign_1" relationshipRef="rel_assign_1" source="view_default_application_node_actor_customer" target="view_default_application_node_process_balance_inquiry" xsi:type="Relationship"/>
         <connection identifier="view_default_application_conn_rel_realization_1" relationshipRef="rel_realization_1" source="view_default_application_node_app_portal" target="view_default_application_node_svc_accounts" xsi:type="Relationship">
-          <bendpoint x="676" y="432"/>
+          <bendpoint x="676" y="425"/>
           <bendpoint x="764" y="413"/>
         </connection>
         <connection identifier="view_default_application_conn_rel_serving_1" relationshipRef="rel_serving_1" source="view_default_application_node_svc_accounts" target="view_default_application_node_app_portal" xsi:type="Relationship">
           <bendpoint x="764" y="436"/>
-          <bendpoint x="676" y="446"/>
+          <bendpoint x="676" y="442"/>
         </connection>
         <connection identifier="view_default_application_conn_rel_access_1" relationshipRef="rel_access_1" source="view_default_application_node_app_portal" target="view_default_application_node_data_account" xsi:type="Relationship">
-          <bendpoint x="676" y="404"/>
-          <bendpoint x="676" y="344"/>
-          <bendpoint x="1104" y="344"/>
+          <bendpoint x="676" y="407"/>
+          <bendpoint x="676" y="347"/>
+          <bendpoint x="1104" y="347"/>
           <bendpoint x="1104" y="425"/>
         </connection>
         <connection identifier="view_default_application_conn_rel_comp_1" relationshipRef="rel_comp_1" source="view_default_application_node_device_vm" target="view_default_application_node_node_runtime" xsi:type="Relationship"/>
-        <connection identifier="view_default_application_conn_rel_comp_2" relationshipRef="rel_comp_2" source="view_default_application_node_node_runtime" target="view_default_application_node_sys_k8s" xsi:type="Relationship">
-          <bendpoint x="676" y="735"/>
-          <bendpoint x="764" y="723"/>
-        </connection>
+        <connection identifier="view_default_application_conn_rel_comp_2" relationshipRef="rel_comp_2" source="view_default_application_node_node_runtime" target="view_default_application_node_sys_k8s" xsi:type="Relationship"/>
         <connection identifier="view_default_application_conn_rel_comp_3" relationshipRef="rel_comp_3" source="view_default_application_node_sys_k8s" target="view_default_application_node_app_portal" xsi:type="Relationship">
-          <bendpoint x="764" y="746"/>
-          <bendpoint x="676" y="418"/>
+          <bendpoint x="890" y="684"/>
+          <bendpoint x="550" y="476"/>
         </connection>
       </view>
       <view identifier="view_application_cooperation" xsi:type="Diagram">

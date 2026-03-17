@@ -261,14 +261,36 @@ def _build_nesting_index(
     children_of: dict[str, list[str]] = defaultdict(list)
     nesting_rel_ids: set[str] = set()
 
+    # Collect candidate children (same-type Composition/Aggregation)
+    candidate_children: dict[str, list[str]] = defaultdict(list)  # parent -> [child]
+    candidate_rel_ids: dict[str, str] = {}  # child_id -> rel_id
+
     for rel in model.relationships:
         if rel.type not in NESTING_TYPES:
             continue
         src = element_by_id.get(rel.source)
         tgt = element_by_id.get(rel.target)
         if src and tgt and src.type == tgt.type:
-            children_of[rel.source].append(rel.target)
-            nesting_rel_ids.add(rel.id)
+            candidate_children[rel.source].append(rel.target)
+            candidate_rel_ids[tgt.id] = rel.id
+
+    # Only nest a child if it has NO outgoing relationships to other elements
+    # (i.e. it is truly a "contained" element with no independent connections)
+    # This prevents elements like dev_app1 (which hosts nd_k8s) from being
+    # hidden inside a container while still having cross-element relationships.
+    outgoing_targets: dict[str, set[str]] = defaultdict(set)
+    for rel in model.relationships:
+        outgoing_targets[rel.source].add(rel.target)
+
+    for parent_id, child_ids in candidate_children.items():
+        for child_id in child_ids:
+            child_targets = outgoing_targets.get(child_id, set())
+            # Nest only if the child has no outgoing relationships
+            # (other than back to its parent)
+            external_targets = child_targets - {parent_id}
+            if not external_targets:
+                children_of[parent_id].append(child_id)
+                nesting_rel_ids.add(candidate_rel_ids[child_id])
 
     nested_ids: set[str] = {cid for kids in children_of.values() for cid in kids}
     return children_of, nesting_rel_ids, nested_ids
@@ -331,16 +353,18 @@ def _build_nodes_from_grid(
     """
     node_sizes = {el.id: _node_size(el.id, children_of, cfg) for el in elements}
 
-    grid = build_smart_grid(
+    grid, layer_boundary_rows = build_smart_grid(
         layer_elements=layer_elements,
         layer_order=layer_order,
         relationships=relationships,
         element_layer=element_layer,
+        max_cols_per_row=cfg.max_cols_per_row,
     )
     metrics = compute_grid_metrics(
         grid=grid,
         node_sizes=node_sizes,
         cfg=cfg,
+        layer_boundary_rows=layer_boundary_rows,
     )
 
     nodes: list[Node] = []

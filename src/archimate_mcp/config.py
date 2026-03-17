@@ -7,30 +7,31 @@ from dataclasses import dataclass
 class LayoutConfig:
     """
     All layout and routing constants in one place.
-
-    Passed explicitly through the pipeline:
-      layout.py -> grid.py (via compute_grid_metrics)
-
+    Passed explicitly through the pipeline: layout.py -> grid.py
     Override per-view for different visual styles.
     """
     # Node dimensions
-    node_w:        int = 220
-    node_h:        int = 70
-    child_w:       int = 170
-    child_h:       int = 55
+    node_w:          int = 220
+    node_h:          int = 70
+    child_w:         int = 170
+    child_h:         int = 55
 
     # Spacing
-    h_gap:         int = 120   # horizontal gap between nodes in same layer
-    layer_v_gap:   int = 240   # vertical gap between layers
-    padding:       int = 24    # padding inside container nodes
-    margin_left:   int = 100   # canvas left margin
-    margin_top:    int = 80    # canvas top margin
+    h_gap:           int = 120   # horizontal gap between nodes in same layer
+    layer_v_gap:     int = 240   # vertical gap between layers
+    row_v_gap:       int = 60    # vertical gap between wrapped rows within a layer
+    padding:         int = 24    # padding inside container nodes
+    margin_left:     int = 100   # canvas left margin
+    margin_top:      int = 80    # canvas top margin
 
     # Routing
-    anchor_offset: int = 16    # connection exit/entry offset from node edge
-    route_padding: int = 36    # clearance around obstacles during routing
-    lane_base:     int = 60    # base offset for routed lanes
-    lane_step:     int = 36    # increment per additional lane
+    anchor_offset:   int = 16    # connection exit/entry offset from node edge
+    route_padding:   int = 36    # clearance around obstacles during routing
+    lane_base:       int = 48    # base offset for routed lanes
+    lane_step:       int = 24    # increment per additional lane
+
+    # Grid wrapping
+    max_cols_per_row: int = 5    # wrap to next row after this many columns per layer
 
 
 DEFAULT_CONFIG = LayoutConfig()

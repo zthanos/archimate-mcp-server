@@ -87,24 +87,29 @@ class _EdgeSlots:
 
 def _preferred_edge(src: Node, tgt: Node) -> tuple[Edge, Edge]:
     """
-    Determine which edges a connection should use based on
-    the relative positions of the two nodes.
+    Determine which edges a connection should use.
 
     Rules (in priority order):
-      1. If vertical distance dominates → S/N (cross-layer)
-      2. If target is to the right → E/W
-      3. If target is to the left  → W/E
+      1. If nodes are in different rows (different y bands) → S/N
+         This ensures cross-layer connections always use top/bottom edges.
+      2. If nodes are in the same row → E/W based on relative X position.
+
+    A "different row" is detected when the vertical gap between the nodes
+    exceeds half the height of the taller node — i.e. they don't overlap
+    vertically and are clearly in separate layers.
     """
     src_cx = src.x + src.w // 2
     src_cy = src.y + src.h // 2
     tgt_cx = tgt.x + tgt.w // 2
     tgt_cy = tgt.y + tgt.h // 2
 
-    dx = abs(tgt_cx - src_cx)
-    dy = abs(tgt_cy - src_cy)
+    # Vertical overlap check: do the two nodes share any Y range?
+    src_top, src_bot = src.y, src.y + src.h
+    tgt_top, tgt_bot = tgt.y, tgt.y + tgt.h
+    vertical_overlap = src_top <= tgt_bot and tgt_top <= src_bot
 
-    if dy > dx:
-        # Cross-layer: vertical dominant
+    if not vertical_overlap:
+        # Different rows → use S/N
         src_edge = Edge.S if tgt_cy > src_cy else Edge.N
         tgt_edge = src_edge.opposite
     elif tgt_cx >= src_cx:

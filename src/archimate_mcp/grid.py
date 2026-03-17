@@ -122,27 +122,41 @@ def build_smart_grid(
     layer_order: list[str],
     relationships: list,
     element_layer: dict[str, str],
-) -> PlacementGrid:
+    max_cols_per_row: int = 6,
+) -> tuple[PlacementGrid, set[int]]:
     """
     Place elements in a smart grid with:
 
-    1. Strict row-per-layer (layer N always = row N in output, skipping empty layers)
-    2. Column alignment: elements connected cross-layer prefer the same column
-    3. Collision avoidance: if a cross-layer arrow passes through a cell occupied
-       by an unrelated element, shift that element right
+    1. Row wrapping: if a layer has more than max_cols_per_row elements,
+       they wrap into multiple sub-rows within the same layer band.
+    2. Column alignment: elements connected cross-layer prefer the same column.
+    3. Collision avoidance: shift elements that block cross-layer arrows.
     """
     grid = PlacementGrid()
 
     # Build active layer order (skip empty layers)
     active_layers = [lid for lid in layer_order if layer_elements.get(lid)]
-    layer_to_row = {lid: i for i, lid in enumerate(active_layers)}
 
-    # Remap element_layer to active row index
+    # Assign row ranges per layer — each layer gets ceil(n/max_cols) rows
+    layer_row_start: dict[str, int] = {}
+    layer_row_count: dict[str, int] = {}
+    current_row = 0
+    for lid in active_layers:
+        n = len(layer_elements.get(lid, []))
+        n_rows = max(1, (n + max_cols_per_row - 1) // max_cols_per_row)
+        layer_row_start[lid] = current_row
+        layer_row_count[lid] = n_rows
+        current_row += n_rows
+
+    # The first row of each layer is a "layer boundary"
+    # (used by GridMetrics to apply layer_v_gap instead of row_v_gap)
+    layer_boundary_rows: set[int] = {r for r in layer_row_start.values()}
+
+    # element_layer → row index (first row of its layer)
     element_row: dict[str, int] = {}
     for el_id, lid in element_layer.items():
-        row = layer_to_row.get(lid)
-        if row is not None:
-            element_row[el_id] = row
+        if lid in layer_row_start:
+            element_row[el_id] = layer_row_start[lid]
 
     # Cross-layer neighbor map (for column inheritance)
     cross_layer_neighbors: dict[str, list[str]] = defaultdict(list)
@@ -153,25 +167,29 @@ def build_smart_grid(
             cross_layer_neighbors[rel.source].append(rel.target)
             cross_layer_neighbors[rel.target].append(rel.source)
 
-    # --- Pass 1: Place elements layer by layer ---
+    # --- Pass 1: Place elements layer by layer with wrapping ---
     for layer_id in active_layers:
-        row = layer_to_row[layer_id]
         items = layer_elements.get(layer_id, [])
+        row_start = layer_row_start[layer_id]
+        n_rows = layer_row_count[layer_id]
 
-        # Sort: elements with already-placed neighbors first, then most-connected
+        # Sort: cross-layer connected first for better alignment
         def sort_key(el):
             neighbors = cross_layer_neighbors.get(el.id, [])
             placed = [n for n in neighbors if grid.col_of(n) is not None]
             return (-len(placed), -len(neighbors), el.name)
 
-        for element in sorted(items, key=sort_key):
-            preferred = _preferred_col(element.id, cross_layer_neighbors, grid, row)
-            grid.place(row, preferred, element.id)
+        sorted_items = sorted(items, key=sort_key)
+
+        for idx, element in enumerate(sorted_items):
+            # Distribute across sub-rows: fill row by row
+            sub_row = row_start + (idx // max_cols_per_row)
+            preferred = _preferred_col(element.id, cross_layer_neighbors, grid, sub_row)
+            actual_col = grid.place(sub_row, preferred, element.id)
+            # Update element_row to actual sub-row for cross-layer arrow logic
+            element_row[element.id] = sub_row
 
     # --- Pass 2: Collision avoidance ---
-    # For each cross-layer arrow, check if it passes through an occupied cell
-    # in an intermediate row at the same column. If so, shift the intermediate
-    # element right to open up that column.
     cross_arrows = _build_cross_layer_arrows(relationships, element_layer, active_layers)
 
     for arrow in cross_arrows:
@@ -180,33 +198,27 @@ def build_smart_grid(
         if src_col is None or tgt_col is None:
             continue
 
-        # Arrow runs vertically between src_col and tgt_col
-        # Check every intermediate row at those columns
         arrow_cols = set(range(min(src_col, tgt_col), max(src_col, tgt_col) + 1))
 
-        # Remap pass-through rows to active layer rows
         src_lid = element_layer.get(arrow.source_id)
         tgt_lid = element_layer.get(arrow.target_id)
         if not src_lid or not tgt_lid:
             continue
-        src_row = layer_to_row.get(src_lid)
-        tgt_row = layer_to_row.get(tgt_lid)
+        src_row = layer_row_start.get(src_lid)
+        tgt_row = layer_row_start.get(tgt_lid)
         if src_row is None or tgt_row is None:
             continue
 
         lo_row = min(src_row, tgt_row)
         hi_row = max(src_row, tgt_row)
-        through_rows = range(lo_row + 1, hi_row)
 
-        for mid_row in through_rows:
+        for mid_row in range(lo_row + 1, hi_row):
             for col in arrow_cols:
                 if not grid.is_occupied(mid_row, col):
                     continue
                 blocking_id = grid._occupied[(mid_row, col)]
-                # Only shift if it's not the source or target of THIS arrow
                 if blocking_id in (arrow.source_id, arrow.target_id):
                     continue
-                # Shift blocking element right until clear of arrow columns
                 new_col = max(arrow_cols) + 1
                 grid._occupied.pop((mid_row, col))
                 for i, cell in enumerate(grid.cells):
@@ -216,11 +228,7 @@ def build_smart_grid(
                 grid._occupied[(mid_row, new_col)] = blocking_id
                 grid._update_pos(blocking_id, mid_row, new_col)
 
-
     # --- Pass 3: Same-row reordering ---
-    # For each row, reorder elements so that same-row arrows connect adjacent cells.
-    # Strategy: find the most-connected element in the row and place it centrally,
-    # then arrange its same-row neighbors beside it.
     same_row_neighbors: dict[str, list[str]] = defaultdict(list)
     for rel in relationships:
         sr = element_row.get(rel.source)
@@ -230,41 +238,39 @@ def build_smart_grid(
             same_row_neighbors[rel.target].append(rel.source)
 
     for layer_id in active_layers:
-        row = layer_to_row[layer_id]
-        cells = grid.elements_in_row(row)
-        if len(cells) < 3:
-            continue  # No reordering needed for < 3 elements
+        start_row = layer_row_start[layer_id]
+        n_rows = layer_row_count[layer_id]
+        for row in range(start_row, start_row + n_rows):
+            cells = grid.elements_in_row(row)
+            if len(cells) < 3:
+                continue
 
-        element_ids = [c.element_id for c in cells]
+            element_ids = [c.element_id for c in cells]
 
-        # Find element with most same-row connections → goes in center
-        def same_row_degree(eid):
-            return len([n for n in same_row_neighbors.get(eid, []) if n in element_ids])
+            def same_row_degree(eid):
+                return len([n for n in same_row_neighbors.get(eid, []) if n in element_ids])
 
-        center = max(element_ids, key=same_row_degree)
-        if same_row_degree(center) == 0:
-            continue  # No same-row relationships, skip
+            center = max(element_ids, key=same_row_degree)
+            if same_row_degree(center) == 0:
+                continue
 
-        # Build new order: neighbors left/right of center, rest at edges
-        neighbors = [n for n in same_row_neighbors.get(center, []) if n in element_ids]
-        others = [e for e in element_ids if e != center and e not in neighbors]
+            neighbors = [n for n in same_row_neighbors.get(center, []) if n in element_ids]
+            others = [e for e in element_ids if e != center and e not in neighbors]
+            left_neighbors  = neighbors[:len(neighbors) // 2]
+            right_neighbors = neighbors[len(neighbors) // 2:]
+            new_order = (others[:len(others) // 2] + left_neighbors +
+                         [center] + right_neighbors + others[len(others) // 2:])
 
-        # Arrange: others_left | neighbors_left | center | neighbors_right | others_right
-        left_neighbors = neighbors[:len(neighbors)//2]
-        right_neighbors = neighbors[len(neighbors)//2:]
-        new_order = others[:len(others)//2] + left_neighbors + [center] + right_neighbors + others[len(others)//2:]
+            grid._occupied = {k: v for k, v in grid._occupied.items() if k[0] != row}
+            for new_col, eid in enumerate(new_order):
+                grid._occupied[(row, new_col)] = eid
+                grid._update_pos(eid, row, new_col)
+                for i, cell in enumerate(grid.cells):
+                    if cell.element_id == eid:
+                        grid.cells[i] = GridCell(row=row, col=new_col, element_id=eid)
+                        break
 
-        # Reassign columns
-        grid._occupied = {k: v for k, v in grid._occupied.items() if k[0] != row}
-        for new_col, eid in enumerate(new_order):
-            grid._occupied[(row, new_col)] = eid
-            grid._update_pos(eid, row, new_col)
-            for i, cell in enumerate(grid.cells):
-                if cell.element_id == eid:
-                    grid.cells[i] = GridCell(row=row, col=new_col, element_id=eid)
-                    break
-
-    return grid
+    return grid, layer_boundary_rows
 
 
 def _preferred_col(
@@ -315,6 +321,11 @@ class GridMetrics:
     col_widths: dict[int, int]
     row_heights: dict[int, int]
     cfg: LayoutConfig
+    layer_boundary_rows: set[int] = None  # rows that start a new layer
+
+    def __post_init__(self):
+        if self.layer_boundary_rows is None:
+            object.__setattr__(self, 'layer_boundary_rows', set())
 
     def x_of(self, col: int) -> int:
         x = self.cfg.margin_left
@@ -325,7 +336,10 @@ class GridMetrics:
     def y_of(self, row: int) -> int:
         y = self.cfg.margin_top
         for r in range(row):
-            y += self.row_heights.get(r, self.cfg.node_h) + self.cfg.layer_v_gap
+            h = self.row_heights.get(r, self.cfg.node_h)
+            # Use layer_v_gap between layers, row_v_gap between wrapped sub-rows
+            gap = self.cfg.layer_v_gap if (r + 1) in self.layer_boundary_rows else self.cfg.row_v_gap
+            y += h + gap
         return y
 
 
@@ -333,6 +347,7 @@ def compute_grid_metrics(
     grid: PlacementGrid,
     node_sizes: dict[str, tuple[int, int]],
     cfg: LayoutConfig,
+    layer_boundary_rows: set[int] | None = None,
 ) -> GridMetrics:
     col_widths: dict[int, int] = defaultdict(int)
     row_heights: dict[int, int] = defaultdict(int)
@@ -346,4 +361,5 @@ def compute_grid_metrics(
         col_widths=dict(col_widths),
         row_heights=dict(row_heights),
         cfg=cfg,
+        layer_boundary_rows=layer_boundary_rows or set(),
     )

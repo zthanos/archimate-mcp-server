@@ -1,0 +1,496 @@
+{
+    "model": {
+      "id": "ebanking-platform",
+      "name": "E-Banking Platform",
+      "documentation": "Full-stack e-banking platform covering business, application, and technology layers."
+    },
+    "elements": [
+      {
+        "id": "ba_customer",
+        "type": "BusinessActor",
+        "name": "Customer"
+      },
+      {
+        "id": "ba_teller",
+        "type": "BusinessActor",
+        "name": "Bank Teller"
+      },
+      {
+        "id": "ba_compliance",
+        "type": "BusinessActor",
+        "name": "Compliance Officer"
+      },
+      {
+        "id": "bp_login",
+        "type": "BusinessProcess",
+        "name": "Login & Authentication"
+      },
+      {
+        "id": "bp_transfer",
+        "type": "BusinessProcess",
+        "name": "Fund Transfer"
+      },
+      {
+        "id": "bp_statement",
+        "type": "BusinessProcess",
+        "name": "Account Statement"
+      },
+      {
+        "id": "bp_loan",
+        "type": "BusinessProcess",
+        "name": "Loan Application"
+      },
+      {
+        "id": "bp_kyc",
+        "type": "BusinessProcess",
+        "name": "KYC Verification"
+      },
+      {
+        "id": "ac_web",
+        "type": "ApplicationComponent",
+        "name": "Web Banking Portal"
+      },
+      {
+        "id": "ac_mobile",
+        "type": "ApplicationComponent",
+        "name": "Mobile Banking App"
+      },
+      {
+        "id": "ac_api_gateway",
+        "type": "ApplicationComponent",
+        "name": "API Gateway"
+      },
+      {
+        "id": "ac_auth",
+        "type": "ApplicationComponent",
+        "name": "Auth Service"
+      },
+      {
+        "id": "ac_accounts",
+        "type": "ApplicationComponent",
+        "name": "Accounts Service"
+      },
+      {
+        "id": "ac_payments",
+        "type": "ApplicationComponent",
+        "name": "Payments Service"
+      },
+      {
+        "id": "ac_loans",
+        "type": "ApplicationComponent",
+        "name": "Loans Service"
+      },
+      {
+        "id": "ac_notifications",
+        "type": "ApplicationComponent",
+        "name": "Notification Service"
+      },
+      {
+        "id": "ac_audit",
+        "type": "ApplicationComponent",
+        "name": "Audit Service"
+      },
+      {
+        "id": "as_auth",
+        "type": "ApplicationService",
+        "name": "Authentication API"
+      },
+      {
+        "id": "as_accounts",
+        "type": "ApplicationService",
+        "name": "Accounts API"
+      },
+      {
+        "id": "as_payments",
+        "type": "ApplicationService",
+        "name": "Payments API"
+      },
+      {
+        "id": "as_loans",
+        "type": "ApplicationService",
+        "name": "Loans API"
+      },
+      {
+        "id": "as_notifications",
+        "type": "ApplicationService",
+        "name": "Notifications API"
+      },
+      {
+        "id": "do_customer",
+        "type": "DataObject",
+        "name": "Customer Profile"
+      },
+      {
+        "id": "do_account",
+        "type": "DataObject",
+        "name": "Account"
+      },
+      {
+        "id": "do_transaction",
+        "type": "DataObject",
+        "name": "Transaction"
+      },
+      {
+        "id": "do_loan",
+        "type": "DataObject",
+        "name": "Loan Record"
+      },
+      {
+        "id": "do_audit_log",
+        "type": "DataObject",
+        "name": "Audit Log"
+      },
+      {
+        "id": "dev_lb",
+        "type": "Device",
+        "name": "Load Balancer"
+      },
+      {
+        "id": "dev_app1",
+        "type": "Device",
+        "name": "App Server 1"
+      },
+      {
+        "id": "dev_app2",
+        "type": "Device",
+        "name": "App Server 2"
+      },
+      {
+        "id": "dev_db_primary",
+        "type": "Device",
+        "name": "DB Primary"
+      },
+      {
+        "id": "dev_db_replica",
+        "type": "Device",
+        "name": "DB Replica"
+      },
+      {
+        "id": "nd_k8s",
+        "type": "Node",
+        "name": "Kubernetes Cluster"
+      },
+      {
+        "id": "nd_kafka",
+        "type": "Node",
+        "name": "Kafka Cluster"
+      },
+      {
+        "id": "ss_postgres",
+        "type": "SystemSoftware",
+        "name": "PostgreSQL"
+      },
+      {
+        "id": "ss_redis",
+        "type": "SystemSoftware",
+        "name": "Redis Cache"
+      },
+      {
+        "id": "ss_nginx",
+        "type": "SystemSoftware",
+        "name": "Nginx"
+      },
+      {
+        "id": "ss_vault",
+        "type": "SystemSoftware",
+        "name": "HashiCorp Vault"
+      }
+    ],
+    "relationships": [
+      {
+        "id": "r01",
+        "type": "Assignment",
+        "source": "ba_customer",
+        "target": "bp_login",
+        "name": "performs"
+      },
+      {
+        "id": "r02",
+        "type": "Assignment",
+        "source": "ba_customer",
+        "target": "bp_transfer",
+        "name": "initiates"
+      },
+      {
+        "id": "r03",
+        "type": "Assignment",
+        "source": "ba_customer",
+        "target": "bp_statement",
+        "name": "requests"
+      },
+      {
+        "id": "r04",
+        "type": "Assignment",
+        "source": "ba_customer",
+        "target": "bp_loan",
+        "name": "applies"
+      },
+      {
+        "id": "r05",
+        "type": "Assignment",
+        "source": "ba_teller",
+        "target": "bp_kyc",
+        "name": "executes"
+      },
+      {
+        "id": "r06",
+        "type": "Assignment",
+        "source": "ba_compliance",
+        "target": "bp_kyc",
+        "name": "oversees"
+      },
+      {
+        "id": "r07",
+        "type": "Realization",
+        "source": "ac_auth",
+        "target": "as_auth",
+        "name": "realizes"
+      },
+      {
+        "id": "r08",
+        "type": "Realization",
+        "source": "ac_accounts",
+        "target": "as_accounts",
+        "name": "realizes"
+      },
+      {
+        "id": "r09",
+        "type": "Realization",
+        "source": "ac_payments",
+        "target": "as_payments",
+        "name": "realizes"
+      },
+      {
+        "id": "r10",
+        "type": "Realization",
+        "source": "ac_loans",
+        "target": "as_loans",
+        "name": "realizes"
+      },
+      {
+        "id": "r11",
+        "type": "Realization",
+        "source": "ac_notifications",
+        "target": "as_notifications",
+        "name": "realizes"
+      },
+      {
+        "id": "r12",
+        "type": "Serving",
+        "source": "as_auth",
+        "target": "ac_web",
+        "name": "serves"
+      },
+      {
+        "id": "r13",
+        "type": "Serving",
+        "source": "as_auth",
+        "target": "ac_mobile",
+        "name": "serves"
+      },
+      {
+        "id": "r14",
+        "type": "Serving",
+        "source": "as_accounts",
+        "target": "ac_web",
+        "name": "serves"
+      },
+      {
+        "id": "r15",
+        "type": "Serving",
+        "source": "as_payments",
+        "target": "ac_web",
+        "name": "serves"
+      },
+      {
+        "id": "r16",
+        "type": "Serving",
+        "source": "as_loans",
+        "target": "ac_web",
+        "name": "serves"
+      },
+      {
+        "id": "r17",
+        "type": "Serving",
+        "source": "as_notifications",
+        "target": "ac_mobile",
+        "name": "serves"
+      },
+      {
+        "id": "r18",
+        "type": "Access",
+        "source": "ac_accounts",
+        "target": "do_account",
+        "name": "manages"
+      },
+      {
+        "id": "r19",
+        "type": "Access",
+        "source": "ac_payments",
+        "target": "do_transaction",
+        "name": "writes"
+      },
+      {
+        "id": "r20",
+        "type": "Access",
+        "source": "ac_loans",
+        "target": "do_loan",
+        "name": "manages"
+      },
+      {
+        "id": "r21",
+        "type": "Access",
+        "source": "ac_audit",
+        "target": "do_audit_log",
+        "name": "writes"
+      },
+      {
+        "id": "r22",
+        "type": "Access",
+        "source": "ac_auth",
+        "target": "do_customer",
+        "name": "reads"
+      },
+      {
+        "id": "r23",
+        "type": "Association",
+        "source": "ac_web",
+        "target": "ac_api_gateway",
+        "name": "calls"
+      },
+      {
+        "id": "r24",
+        "type": "Association",
+        "source": "ac_mobile",
+        "target": "ac_api_gateway",
+        "name": "calls"
+      },
+      {
+        "id": "r25",
+        "type": "Association",
+        "source": "ac_api_gateway",
+        "target": "ac_auth",
+        "name": "routes"
+      },
+      {
+        "id": "r26",
+        "type": "Association",
+        "source": "ac_api_gateway",
+        "target": "ac_accounts",
+        "name": "routes"
+      },
+      {
+        "id": "r27",
+        "type": "Association",
+        "source": "ac_api_gateway",
+        "target": "ac_payments",
+        "name": "routes"
+      },
+      {
+        "id": "r28",
+        "type": "Association",
+        "source": "ac_payments",
+        "target": "ac_notifications",
+        "name": "triggers"
+      },
+      {
+        "id": "r29",
+        "type": "Association",
+        "source": "ac_payments",
+        "target": "ac_audit",
+        "name": "logs"
+      },
+      {
+        "id": "r30",
+        "type": "Composition",
+        "source": "dev_lb",
+        "target": "dev_app1",
+        "name": "balances"
+      },
+      {
+        "id": "r31",
+        "type": "Composition",
+        "source": "dev_lb",
+        "target": "dev_app2",
+        "name": "balances"
+      },
+      {
+        "id": "r32",
+        "type": "Association",
+        "source": "dev_db_primary",
+        "target": "dev_db_replica",
+        "name": "replicates to"
+      },
+      {
+        "id": "r33",
+        "type": "Composition",
+        "source": "dev_app1",
+        "target": "nd_k8s",
+        "name": "hosts"
+      },
+      {
+        "id": "r34",
+        "type": "Composition",
+        "source": "dev_app2",
+        "target": "nd_k8s",
+        "name": "hosts"
+      },
+      {
+        "id": "r35",
+        "type": "Composition",
+        "source": "dev_db_primary",
+        "target": "ss_postgres",
+        "name": "runs"
+      },
+      {
+        "id": "r36",
+        "type": "Composition",
+        "source": "nd_k8s",
+        "target": "ss_redis",
+        "name": "runs"
+      },
+      {
+        "id": "r37",
+        "type": "Composition",
+        "source": "nd_k8s",
+        "target": "ss_nginx",
+        "name": "runs"
+      },
+      {
+        "id": "r38",
+        "type": "Composition",
+        "source": "nd_kafka",
+        "target": "ss_vault",
+        "name": "runs"
+      },
+      {
+        "id": "r39",
+        "type": "Composition",
+        "source": "nd_k8s",
+        "target": "ac_auth",
+        "name": "deploys"
+      },
+      {
+        "id": "r40",
+        "type": "Composition",
+        "source": "nd_k8s",
+        "target": "ac_accounts",
+        "name": "deploys"
+      },
+      {
+        "id": "r41",
+        "type": "Composition",
+        "source": "nd_k8s",
+        "target": "ac_payments",
+        "name": "deploys"
+      },
+      {
+        "id": "r42",
+        "type": "Composition",
+        "source": "nd_kafka",
+        "target": "ac_notifications",
+        "name": "deploys"
+      }
+    ],
+    "views": []
+  }
