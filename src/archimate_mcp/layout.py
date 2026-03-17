@@ -39,8 +39,8 @@ MARGIN_TOP = 80
 
 ANCHOR_OFFSET = 16
 ROUTE_PADDING = 36
-LANE_BASE_OFFSET = 48
-LANE_STEP = 24
+LANE_BASE_OFFSET = 60
+LANE_STEP = 36
 
 
 # ---------------------------------------------------------------------------
@@ -470,6 +470,13 @@ def _try_minimal_route(
 
     return None
 
+def _is_cross_layer(source: Node, target: Node) -> bool:
+    """True when the vertical distance dominates — arrow spans multiple layers."""
+    dy = abs(_center_y(target) - _center_y(source))
+    dx = abs(_center_x(target) - _center_x(source))
+    return dy > dx
+
+
 def _route_connection(
     source: Node,
     target: Node,
@@ -489,83 +496,83 @@ def _route_connection(
     tx = _center_x(target)
     ty = _center_y(target)
 
-    if tx >= sx:
-        start = (_right(source) + ANCHOR_OFFSET, sy)
-        end = (_left(target) - ANCHOR_OFFSET, ty)
-        x_dir = 1
-    else:
-        start = (_left(source) - ANCHOR_OFFSET, sy)
-        end = (_right(target) + ANCHOR_OFFSET, ty)
-        x_dir = -1
-
     spread = pair_index // 2
     lane_extra = LANE_BASE_OFFSET + spread * LANE_STEP
-
     side = "top" if (pair_index + (0 if direction == 1 else 1)) % 2 == 0 else "bottom"
 
-    top_lane = min(_top(source), _top(target)) - lane_extra
-    bottom_lane = max(_bottom(source), _bottom(target)) + lane_extra
+    # 2. Cross-layer (vertical-dominant) arrows: route via left/right vertical lane
+    if _is_cross_layer(source, target):
+        # Exit/enter from bottom/top of the node
+        if ty >= sy:
+            start = (sx, _bottom(source) + ANCHOR_OFFSET)
+            end   = (tx, _top(target)    - ANCHOR_OFFSET)
+        else:
+            start = (sx, _top(source)    - ANCHOR_OFFSET)
+            end   = (tx, _bottom(target) + ANCHOR_OFFSET)
 
+        left_base  = min(_left(source),  _left(target))
+        right_base = max(_right(source), _right(target))
+
+        for i in range(12):
+            extra = lane_extra + i * LANE_STEP
+
+            # Try left lane first for even pair_index, right for odd
+            for try_left in ([True, False] if side == "top" else [False, True]):
+                if try_left:
+                    lane_x = left_base - extra
+                else:
+                    lane_x = right_base + extra
+
+                candidate = _normalize_points([
+                    start,
+                    (lane_x, start[1]),
+                    (lane_x, end[1]),
+                    end,
+                ])
+                if _path_is_clear(candidate, obstacle_nodes, source.id, target.id):
+                    return _points_to_bendpoints(candidate)
+
+        # Fallback: straight vertical dogleg
+        fallback = _normalize_points([start, (start[0], end[1]), end])
+        return _points_to_bendpoints(fallback)
+
+    # 3. Same-layer (horizontal-dominant) arrows: top/bottom lane routing
+    # Stagger anchor points vertically when multiple arrows share the same node pair
+    # Use LANE_STEP spacing so anchor separation matches lane separation
+    anchor_offset_y = (pair_index - (pair_count - 1) / 2) * LANE_STEP
+
+    if tx >= sx:
+        start = (_right(source) + ANCHOR_OFFSET, sy + anchor_offset_y)
+        end   = (_left(target)  - ANCHOR_OFFSET, ty + anchor_offset_y)
+        x_dir = 1
+    else:
+        start = (_left(source)  - ANCHOR_OFFSET, sy + anchor_offset_y)
+        end   = (_right(target) + ANCHOR_OFFSET, ty + anchor_offset_y)
+        x_dir = -1
+
+    top_lane    = min(_top(source),    _top(target))    - lane_extra + anchor_offset_y
+    bottom_lane = max(_bottom(source), _bottom(target)) + lane_extra + anchor_offset_y
     out_x = start[0] + (x_dir * lane_extra)
-    in_x = end[0] - (x_dir * lane_extra)
+    in_x  = end[0]   - (x_dir * lane_extra)
 
     candidates: list[list[tuple[int, int]]] = []
 
     if side == "top":
-        candidates.append([
-            start,
-            (out_x, start[1]),
-            (out_x, top_lane),
-            (in_x, top_lane),
-            (in_x, end[1]),
-            end,
-        ])
-        candidates.append([
-            start,
-            (out_x, start[1]),
-            (out_x, bottom_lane),
-            (in_x, bottom_lane),
-            (in_x, end[1]),
-            end,
-        ])
+        candidates.append([start, (out_x, start[1]), (out_x, top_lane),    (in_x, top_lane),    (in_x, end[1]), end])
+        candidates.append([start, (out_x, start[1]), (out_x, bottom_lane), (in_x, bottom_lane), (in_x, end[1]), end])
     else:
-        candidates.append([
-            start,
-            (out_x, start[1]),
-            (out_x, bottom_lane),
-            (in_x, bottom_lane),
-            (in_x, end[1]),
-            end,
-        ])
-        candidates.append([
-            start,
-            (out_x, start[1]),
-            (out_x, top_lane),
-            (in_x, top_lane),
-            (in_x, end[1]),
-            end,
-        ])
+        candidates.append([start, (out_x, start[1]), (out_x, bottom_lane), (in_x, bottom_lane), (in_x, end[1]), end])
+        candidates.append([start, (out_x, start[1]), (out_x, top_lane),    (in_x, top_lane),    (in_x, end[1]), end])
 
-    # 2. For multi-rel pairs, only after pair split routing try minimal doglegs
-    hv = _normalize_points([start, (end[0], start[1]), end])
-    vh = _normalize_points([start, (start[0], end[1]), end])
-
-    candidates.append(hv)
-    candidates.append(vh)
+    candidates.append(_normalize_points([start, (end[0], start[1]), end]))
+    candidates.append(_normalize_points([start, (start[0], end[1]), end]))
 
     for candidate in candidates:
         normalized = _normalize_points(candidate)
-        if not _polyline_intersects_any_node(
-            normalized,
-            obstacle_nodes,
-            source.id,
-            target.id,
-        ):
+        if not _polyline_intersects_any_node(normalized, obstacle_nodes, source.id, target.id):
             return _points_to_bendpoints(normalized)
 
-    # 3. Last fallback
-    fallback = _normalize_points(candidates[0])
-    return _points_to_bendpoints(fallback)
+    return _points_to_bendpoints(_normalize_points(candidates[0]))
 
 def _build_connections_with_routing(
     model: ArchimateModel,

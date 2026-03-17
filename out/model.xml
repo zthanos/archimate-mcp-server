@@ -75,16 +75,16 @@
         <node identifier="view_default_application_node_device_vm" x="780" y="700" w="220" h="70" xsi:type="Element" elementRef="device_vm"/>
         <connection identifier="view_default_application_conn_rel_assign_1" relationshipRef="rel_assign_1" source="view_default_application_node_actor_customer" target="view_default_application_node_process_balance_inquiry" xsi:type="Relationship"/>
         <connection identifier="view_default_application_conn_rel_realization_1" relationshipRef="rel_realization_1" source="view_default_application_node_app_portal" target="view_default_application_node_svc_accounts" xsi:type="Relationship">
-          <bendpoint x="384" y="425"/>
-          <bendpoint x="384" y="342"/>
-          <bendpoint x="716" y="342"/>
-          <bendpoint x="716" y="425"/>
+          <bendpoint x="396" y="407"/>
+          <bendpoint x="396" y="312"/>
+          <bendpoint x="704" y="312"/>
+          <bendpoint x="704" y="407"/>
         </connection>
         <connection identifier="view_default_application_conn_rel_serving_1" relationshipRef="rel_serving_1" source="view_default_application_node_svc_accounts" target="view_default_application_node_app_portal" xsi:type="Relationship">
-          <bendpoint x="716" y="425"/>
-          <bendpoint x="716" y="342"/>
-          <bendpoint x="384" y="342"/>
-          <bendpoint x="384" y="425"/>
+          <bendpoint x="704" y="443"/>
+          <bendpoint x="704" y="348"/>
+          <bendpoint x="396" y="348"/>
+          <bendpoint x="396" y="443"/>
         </connection>
         <connection identifier="view_default_application_conn_rel_access_1" relationshipRef="rel_access_1" source="view_default_application_node_app_portal" target="view_default_application_node_data_account" xsi:type="Relationship"/>
         <connection identifier="view_default_application_conn_rel_comp_1" relationshipRef="rel_comp_1" source="view_default_application_node_device_vm" target="view_default_application_node_node_runtime" xsi:type="Relationship"/>
@@ -99,22 +99,22 @@
         <node identifier="view_application_cooperation_node_svc_accounts" x="440" y="80" w="220" h="70" xsi:type="Element" elementRef="svc_accounts"/>
         <node identifier="view_application_cooperation_node_app_portal" x="780" y="80" w="220" h="70" xsi:type="Element" elementRef="app_portal"/>
         <connection identifier="view_application_cooperation_conn_rel_realization_1" relationshipRef="rel_realization_1" source="view_application_cooperation_node_app_portal" target="view_application_cooperation_node_svc_accounts" xsi:type="Relationship">
-          <bendpoint x="716" y="115"/>
-          <bendpoint x="716" y="32"/>
-          <bendpoint x="724" y="32"/>
-          <bendpoint x="724" y="115"/>
+          <bendpoint x="704" y="97"/>
+          <bendpoint x="704" y="2"/>
+          <bendpoint x="736" y="2"/>
+          <bendpoint x="736" y="97"/>
         </connection>
         <connection identifier="view_application_cooperation_conn_rel_serving_1" relationshipRef="rel_serving_1" source="view_application_cooperation_node_svc_accounts" target="view_application_cooperation_node_app_portal" xsi:type="Relationship">
-          <bendpoint x="724" y="115"/>
-          <bendpoint x="724" y="32"/>
-          <bendpoint x="716" y="32"/>
-          <bendpoint x="716" y="115"/>
+          <bendpoint x="736" y="133"/>
+          <bendpoint x="736" y="38"/>
+          <bendpoint x="704" y="38"/>
+          <bendpoint x="704" y="133"/>
         </connection>
         <connection identifier="view_application_cooperation_conn_rel_access_1" relationshipRef="rel_access_1" source="view_application_cooperation_node_app_portal" target="view_application_cooperation_node_data_account" xsi:type="Relationship">
-          <bendpoint x="716" y="115"/>
-          <bendpoint x="716" y="32"/>
-          <bendpoint x="384" y="32"/>
-          <bendpoint x="384" y="115"/>
+          <bendpoint x="704" y="115"/>
+          <bendpoint x="704" y="20"/>
+          <bendpoint x="396" y="20"/>
+          <bendpoint x="396" y="115"/>
         </connection>
       </view>
       <view identifier="view_technology" xsi:type="Diagram">
@@ -123,10 +123,10 @@
         <node identifier="view_technology_node_sys_k8s" x="440" y="80" w="220" h="70" xsi:type="Element" elementRef="sys_k8s"/>
         <node identifier="view_technology_node_device_vm" x="780" y="80" w="220" h="70" xsi:type="Element" elementRef="device_vm"/>
         <connection identifier="view_technology_conn_rel_comp_1" relationshipRef="rel_comp_1" source="view_technology_node_device_vm" target="view_technology_node_node_runtime" xsi:type="Relationship">
-          <bendpoint x="716" y="115"/>
-          <bendpoint x="716" y="32"/>
-          <bendpoint x="384" y="32"/>
-          <bendpoint x="384" y="115"/>
+          <bendpoint x="704" y="115"/>
+          <bendpoint x="704" y="20"/>
+          <bendpoint x="396" y="20"/>
+          <bendpoint x="396" y="115"/>
         </connection>
         <connection identifier="view_technology_conn_rel_comp_2" relationshipRef="rel_comp_2" source="view_technology_node_node_runtime" target="view_technology_node_sys_k8s" xsi:type="Relationship"/>
       </view>
