@@ -1,0 +1,36 @@
+[project]
+name = "archimate-mcp-server"
+version = "0.1.0"
+description = "MCP server that generates ArchiMate model exchange XML with views"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+  { name = "OpenAI" }
+]
+dependencies = [
+  "mcp>=1.0.0",
+  "pydantic>=2.7.0"
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0.0"
+]
+
+[project.scripts]
+archimate-mcp-server = "archimate_mcp.server:main"
+archimate-mcp-cli = "archimate_mcp.cli:main"
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
