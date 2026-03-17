@@ -11,6 +11,25 @@ An MCP (Model Context Protocol) server that enables AI agents to **create, updat
 
 ---
 
+# ⚡ 30-Second Quick Start
+
+```bash
+git clone https://github.com/zthanos/archimate-mcp-server
+cd archimate-mcp-server
+uv sync
+uv run server.py
+```
+
+Then describe your architecture:
+
+```text
+Customer uses a portal that calls an account service
+```
+
+👉 The agent will generate a valid ArchiMate model, validate it, and prepare it for export.
+
+---
+
 # 🚀 What This Solves
 
 Creating ArchiMate diagrams manually is:
@@ -101,8 +120,8 @@ The agent:
 # 📦 Installation
 
 ```bash
-git clone https://github.com/<your-username>/archimate-mcp
-cd archimate-mcp
+git clone https://github.com/zthanos/archimate-mcp-server
+cd archimate-mcp-server
 
 uv sync
 ```
@@ -132,7 +151,7 @@ uv run archimate-mcp-cli export \
 ## Extraction
 
 * `extract_archimate_facts_from_text`
-* `extract_archimate_facts_from_code`
+* `extract_archimate_facts_from_code_summary`
 
 ## Validation
 
@@ -191,9 +210,10 @@ Export this model
 src/
   archimate_mcp/
     server.py
-    tools/
-    exporter/
-    models/
+    cli.py
+    exporter.py
+    layout.py
+    validation.py
     examples/
 
 SKILL.md
@@ -201,15 +221,19 @@ archimate-rules.md
 example-models.md
 ```
 
+```
+
 ---
 
 # 🧪 Example Output
 
-✔ Archi-compatible XML
+✔ Archi-compatible XML  
 ✔ Import directly into Archi:
 
 ```
+
 File → Import → Open Exchange Format
+
 ```
 
 ---
@@ -217,30 +241,26 @@ File → Import → Open Exchange Format
 # 🎯 Design Principles
 
 ### 1. Agent-first
-
 Built for LLM agents, not manual editing.
 
 ### 2. Iterative modeling
-
 The model evolves through conversation.
 
 ### 3. Validation-first
-
 Invalid architecture is blocked early.
 
 ### 4. Deterministic output
-
 Stable, tool-compatible results.
 
 ---
 
 # 🚧 Roadmap
 
-* [ ] Persistent model storage
-* [ ] Multi-view generation (Application / Technology / Business)
-* [ ] Smarter layout (edge routing improvements)
-* [ ] Live diagram preview (SVG)
-* [ ] Round-trip editing with Archi
+- [ ] Persistent model storage
+- [ ] Multi-view generation (Application / Technology / Business)
+- [ ] Smarter layout (edge routing improvements)
+- [ ] Live diagram preview (SVG)
+- [ ] Round-trip editing with Archi
 
 ---
 
@@ -249,23 +269,24 @@ Stable, tool-compatible results.
 Contributions welcome.
 
 Focus areas:
-
-* extraction accuracy
-* validation rules
-* layout improvements
-* MCP integrations
+- extraction accuracy
+- validation rules
+- layout improvements
+- MCP integrations
 
 ---
 
 # 📚 References
 
-* ArchiMate Specification (The Open Group)
-* Archi Tool: [https://www.archimatetool.com/](https://www.archimatetool.com/)
-* Archi Import/Export Plugins:
-  [https://github.com/archimatetool/archi/wiki/Developing-Import-and-Export-Plug-ins](https://github.com/archimatetool/archi/wiki/Developing-Import-and-Export-Plug-ins)
+- ArchiMate Specification (The Open Group)
+- Archi Tool: https://www.archimatetool.com/
+- Archi Import/Export Plugins:
+  https://github.com/archimatetool/archi/wiki/Developing-Import-and-Export-Plug-ins
 
 ---
 
 # 📄 License
 
 MIT License
+
+```
