@@ -1,169 +1,271 @@
-# ArchiMate MCP Server
+# 🧠 ArchiMate MCP Server
 
-A working Python MCP server that generates **ArchiMate Model Exchange XML** with simple diagram views, suitable as a starting point for import into tools such as **Archi** and **Bizzdesign Horizzon**.
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.11+-blue.svg)]()
+[![MCP](https://img.shields.io/badge/MCP-compatible-green.svg)]()
+[![Status](https://img.shields.io/badge/status-active-success.svg)]()
 
-The server is built on the official MCP Python SDK's `FastMCP` pattern, which exposes tools from Python functions and supports standard transports such as stdio and Streamable HTTP. citeturn740170search0turn740170search1
+An MCP (Model Context Protocol) server that enables AI agents to **create, update, validate, repair, and export ArchiMate models** from plain text.
 
-## What this project does
+> Turn natural language into **valid ArchiMate diagrams** — iteratively.
 
-- Accepts a canonical JSON model with elements, relationships, and optional views
-- Validates IDs, references, and a small legality matrix for relationships
-- Generates a default diagram view when none is provided
-- Exports **ArchiMate Model Exchange XML**
-- Exposes the functionality through MCP tools
-- Includes a CLI for local testing without an MCP client
+---
 
-## Current MVP scope
+# 🚀 What This Solves
 
-### Element types
-- BusinessActor
-- BusinessProcess
-- ApplicationComponent
-- ApplicationService
-- DataObject
-- Node
-- Device
-- SystemSoftware
+Creating ArchiMate diagrams manually is:
 
-### Relationship types
-- Serving
-- Access
-- Assignment
-- Realization
-- Composition
-- Aggregation
-- Association
-- Flow
-- Triggering
+* slow
+* error-prone
+* hard to maintain
 
-## Project structure
+This project enables:
+
+✅ **Conversational modeling**
+✅ **Validation-first architecture design**
+✅ **Agent-driven diagram generation**
+
+---
+
+# ✨ Features
+
+* 🧠 Plain text → ArchiMate model
+* 🔁 Iterative updates via natural language
+* ✅ Validation against ArchiMate rules
+* 🛠 Automatic repair & improvement suggestions
+* 📊 View generation (diagram-ready)
+* 📦 Export to Archi Open Exchange Format (XML)
+* 🤖 Designed for AI agents (VS Code / Copilot / MCP)
+
+---
+
+# ⚡ Quick Example
+
+### Input
 
 ```text
-archimate-mcp-server/
-├─ pyproject.toml
-├─ README.md
-├─ src/
-│  └─ archimate_mcp/
-│     ├─ __init__.py
-│     ├─ builders.py
-│     ├─ cli.py
-│     ├─ exporter.py
-│     ├─ layout.py
-│     ├─ models.py
-│     ├─ server.py
-│     ├─ validation.py
-│     └─ examples/
-│        └─ sample_model.json
-└─ tests/
-   ├─ test_exporter.py
-   └─ test_validation.py
+Customer uses a portal that calls an account service
 ```
 
-## Installation
+### Output
+
+* Valid ArchiMate model
+* Relationships validated
+* Diagram views generated
+* Exportable XML for Archi
+
+---
+
+### Then refine it:
+
+```text
+Add a database
+Change Account to ApplicationService
+Remove Kubernetes and use a VM
+```
+
+➡️ The model is updated — no need to recreate anything.
+
+---
+
+# 🧠 Core Workflow
+
+```text
+text → facts → validate → (fix) → views → export
+```
+
+### Key Rule
+
+> ❗ No validation → No export
+
+---
+
+# 🧩 MCP Integration
+
+This server is built for **agentic workflows**.
+
+The agent:
+
+* maintains the model in context
+* applies updates from user intent
+* ensures correctness before export
+
+👉 Perfect for:
+
+* VS Code agents
+* Copilot extensions
+* custom LLM pipelines
+
+---
+
+# 📦 Installation
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -e .
+git clone https://github.com/<your-username>/archimate-mcp
+cd archimate-mcp
+
+uv sync
 ```
 
-For tests:
+---
+
+# ▶️ Run Server
 
 ```bash
-pip install -e .[dev]
-pytest
+uv run server.py
 ```
 
-## CLI usage
+---
 
-Validate a model:
+# 🧪 CLI Usage
 
 ```bash
-archimate-mcp-cli validate src/archimate_mcp/examples/sample_model.json
+uv run archimate-mcp-cli export \
+  src/archimate_mcp/examples/sample_model.json \
+  --output out/model.xml
 ```
 
-Generate XML to stdout:
+---
 
-```bash
-archimate-mcp-cli export src/archimate_mcp/examples/sample_model.json
+# 🛠 Available Tools
+
+## Extraction
+
+* `extract_archimate_facts_from_text`
+* `extract_archimate_facts_from_code`
+
+## Validation
+
+* `validate_archimate_facts`
+
+## Repair / Improvement
+
+* `normalize_relationship_types`
+* `detect_architecture_smells`
+* `suggest_missing_relationships`
+
+## Views
+
+* `generate_archimate_views`
+
+## Export
+
+* `generate_archimate_exchange_file`
+
+---
+
+# 🔁 Example Workflow
+
+## 1. Create
+
+```text
+Customer uses a portal that calls a payment service
 ```
 
-Generate XML to a file:
+## 2. Update
 
-```bash
-archimate-mcp-cli export src/archimate_mcp/examples/sample_model.json --output out/model.xml
+```text
+Add database and connect service to it
 ```
 
-## MCP usage
+## 3. Export
 
-Start the MCP server over stdio:
-
-```bash
-archimate-mcp-server
+```text
+Export this model
 ```
 
-Exposed tools:
+---
 
-- `validate_archimate_model`
-- `generate_archimate_exchange_xml`
-- `generate_archimate_exchange_file`
+# ⚠️ Rules & Constraints
 
-## Sample JSON input
+* Models must follow ArchiMate specification
+* Invalid relationships are rejected
+* Export is blocked if validation fails
+* Views generated only after validation
 
-```json
-{
-  "model": {
-    "id": "customer-banking-model",
-    "name": "Customer Banking Model"
-  },
-  "elements": [
-    {
-      "id": "app_portal",
-      "type": "ApplicationComponent",
-      "name": "Customer Portal"
-    },
-    {
-      "id": "svc_accounts",
-      "type": "ApplicationService",
-      "name": "Accounts Service"
-    },
-    {
-      "id": "data_account",
-      "type": "DataObject",
-      "name": "Account"
-    }
-  ],
-  "relationships": [
-    {
-      "id": "rel_serves_1",
-      "type": "Serving",
-      "source": "svc_accounts",
-      "target": "app_portal",
-      "name": "serves"
-    },
-    {
-      "id": "rel_access_1",
-      "type": "Access",
-      "source": "app_portal",
-      "target": "data_account",
-      "name": "reads"
-    }
-  ],
-  "views": []
-}
+---
+
+# 📁 Project Structure
+
+```text
+src/
+  archimate_mcp/
+    server.py
+    tools/
+    exporter/
+    models/
+    examples/
+
+SKILL.md
+archimate-rules.md
+example-models.md
 ```
 
-## Notes
+---
 
-This is an MVP, not a full implementation of every ArchiMate exchange schema feature. The exporter is intentionally compact and deterministic so you can extend it with:
+# 🧪 Example Output
 
-- XSD validation
-- organizations/folders
-- property definitions
-- more complete legality rules
-- richer layout strategies
-- import/merge support
+✔ Archi-compatible XML
+✔ Import directly into Archi:
 
-## Why this project shape
+```
+File → Import → Open Exchange Format
+```
 
-The official MCP docs recommend building servers with `FastMCP`, using Python functions as tools with schemas generated from type hints and docstrings. citeturn740170search0turn740170search1
+---
+
+# 🎯 Design Principles
+
+### 1. Agent-first
+
+Built for LLM agents, not manual editing.
+
+### 2. Iterative modeling
+
+The model evolves through conversation.
+
+### 3. Validation-first
+
+Invalid architecture is blocked early.
+
+### 4. Deterministic output
+
+Stable, tool-compatible results.
+
+---
+
+# 🚧 Roadmap
+
+* [ ] Persistent model storage
+* [ ] Multi-view generation (Application / Technology / Business)
+* [ ] Smarter layout (edge routing improvements)
+* [ ] Live diagram preview (SVG)
+* [ ] Round-trip editing with Archi
+
+---
+
+# 🤝 Contributing
+
+Contributions welcome.
+
+Focus areas:
+
+* extraction accuracy
+* validation rules
+* layout improvements
+* MCP integrations
+
+---
+
+# 📚 References
+
+* ArchiMate Specification (The Open Group)
+* Archi Tool: [https://www.archimatetool.com/](https://www.archimatetool.com/)
+* Archi Import/Export Plugins:
+  [https://github.com/archimatetool/archi/wiki/Developing-Import-and-Export-Plug-ins](https://github.com/archimatetool/archi/wiki/Developing-Import-and-Export-Plug-ins)
+
+---
+
+# 📄 License
+
+MIT License
