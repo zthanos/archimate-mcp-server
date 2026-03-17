@@ -95,6 +95,11 @@ def validate_model(model: ArchimateModel) -> list[str]:
         _validate_nodes(view.nodes)
 
         for connection in view.connections:
+            for bp in connection.bendpoints:
+                if not isinstance(bp.x, int) or not isinstance(bp.y, int):
+                    errors.append(
+                        f"View {view.id} connection {connection.id} has invalid bendpoint"
+                    )
             if connection.relationship_id not in relationship_ids:
                 errors.append(
                     f"View {view.id} connection {connection.id} unknown relationship: "

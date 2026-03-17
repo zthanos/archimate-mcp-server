@@ -53,17 +53,22 @@ class Relationship(BaseModel):
 
 class Node(BaseModel):
     id: str
-    element_id: str | None = None   # None for group/container nodes
-    label: str | None = None         # label for group nodes
+    element_id: str | None = None
+    label: str | None = None
     x: int
     y: int
     w: int = 180
     h: int = 55
     node_type: Literal["Element", "Container"] = "Element"
-    children: list[Node] = Field(default_factory=list)
+    children: list["Node"] = Field(default_factory=list)
 
 
 Node.model_rebuild()
+
+
+class BendPoint(BaseModel):
+    x: int
+    y: int
 
 
 class Connection(BaseModel):
@@ -71,6 +76,7 @@ class Connection(BaseModel):
     relationship_id: str
     source_node_id: str
     target_node_id: str
+    bendpoints: list[BendPoint] = Field(default_factory=list)
 
 
 class View(BaseModel):

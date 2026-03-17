@@ -19,6 +19,8 @@ ET.register_namespace("", NS_ARCHIMATE)
 ET.register_namespace("xsi", NS_XSI)
 ET.register_namespace("dc", NS_DC)
 
+VIEW_PADDING = 20
+
 
 def qname(ns: str, tag: str) -> str:
     return f"{{{ns}}}{tag}"
@@ -31,13 +33,47 @@ def prettify(xml_bytes: bytes) -> str:
 
 def _property_definitions(model: ArchimateModel) -> OrderedDict[str, str]:
     defs: OrderedDict[str, str] = OrderedDict()
+
     for element in model.elements:
         for prop in element.properties:
             defs.setdefault(prop.key, prop.key)
+
     for relationship in model.relationships:
         for prop in relationship.properties:
             defs.setdefault(prop.key, prop.key)
+
     return defs
+
+
+def _collect_all_nodes(nodes: list[Node]) -> list[Node]:
+    result: list[Node] = []
+    for node in nodes:
+        result.append(node)
+        if node.children:
+            result.extend(_collect_all_nodes(node.children))
+    return result
+
+
+def _compute_view_shift(view, padding: int = VIEW_PADDING) -> tuple[int, int]:
+    """
+    Ensure all node and bendpoint coordinates in a view are non-negative.
+    """
+    min_x = 0
+    min_y = 0
+
+    for node in _collect_all_nodes(view.nodes):
+        min_x = min(min_x, node.x)
+        min_y = min(min_y, node.y)
+
+    for connection in view.connections:
+        for bp in getattr(connection, "bendpoints", []):
+            min_x = min(min_x, bp.x)
+            min_y = min(min_y, bp.y)
+
+    shift_x = (-min_x + padding) if min_x < 0 else 0
+    shift_y = (-min_y + padding) if min_y < 0 else 0
+
+    return shift_x, shift_y
 
 
 def export_archimate_exchange_xml(model: ArchimateModel) -> str:
@@ -59,7 +95,8 @@ def export_archimate_exchange_xml(model: ArchimateModel) -> str:
         doc_el.text = model.model.documentation
 
     propdef_ref_by_key = {
-        key: f"propdef_{idx}" for idx, key in enumerate(property_definitions, start=1)
+        key: f"propdef_{idx}"
+        for idx, key in enumerate(property_definitions, start=1)
     }
 
     elements_el = ET.SubElement(root, qname(NS_ARCHIMATE, "elements"))
@@ -72,12 +109,13 @@ def export_archimate_exchange_xml(model: ArchimateModel) -> str:
                 qname(NS_XSI, "type"): element.type,
             },
         )
-        n = ET.SubElement(el, qname(NS_ARCHIMATE, "name"))
-        n.text = element.name
+
+        name_node = ET.SubElement(el, qname(NS_ARCHIMATE, "name"))
+        name_node.text = element.name
 
         if element.documentation:
-            d = ET.SubElement(el, qname(NS_ARCHIMATE, "documentation"))
-            d.text = element.documentation
+            doc_node = ET.SubElement(el, qname(NS_ARCHIMATE, "documentation"))
+            doc_node.text = element.documentation
 
         if element.properties:
             props_el = ET.SubElement(el, qname(NS_ARCHIMATE, "properties"))
@@ -90,10 +128,10 @@ def export_archimate_exchange_xml(model: ArchimateModel) -> str:
                 val_el = ET.SubElement(prop_el, qname(NS_ARCHIMATE, "value"))
                 val_el.text = prop.value
 
-    rels_el = ET.SubElement(root, qname(NS_ARCHIMATE, "relationships"))
+    relationships_el = ET.SubElement(root, qname(NS_ARCHIMATE, "relationships"))
     for relationship in model.relationships:
-        rel = ET.SubElement(
-            rels_el,
+        rel_el = ET.SubElement(
+            relationships_el,
             qname(NS_ARCHIMATE, "relationship"),
             {
                 "identifier": relationship.id,
@@ -102,14 +140,17 @@ def export_archimate_exchange_xml(model: ArchimateModel) -> str:
                 qname(NS_XSI, "type"): relationship.type,
             },
         )
+
         if relationship.name:
-            rn = ET.SubElement(rel, qname(NS_ARCHIMATE, "name"))
-            rn.text = relationship.name
+            rel_name = ET.SubElement(rel_el, qname(NS_ARCHIMATE, "name"))
+            rel_name.text = relationship.name
+
         if relationship.documentation:
-            rd = ET.SubElement(rel, qname(NS_ARCHIMATE, "documentation"))
-            rd.text = relationship.documentation
+            rel_doc = ET.SubElement(rel_el, qname(NS_ARCHIMATE, "documentation"))
+            rel_doc.text = relationship.documentation
+
         if relationship.properties:
-            props_el = ET.SubElement(rel, qname(NS_ARCHIMATE, "properties"))
+            props_el = ET.SubElement(rel_el, qname(NS_ARCHIMATE, "properties"))
             for prop in relationship.properties:
                 prop_el = ET.SubElement(
                     props_el,
@@ -125,15 +166,20 @@ def export_archimate_exchange_xml(model: ArchimateModel) -> str:
             prop_def = ET.SubElement(
                 prop_defs_el,
                 qname(NS_ARCHIMATE, "propertyDefinition"),
-                {"identifier": f"propdef_{idx}", "type": "string"},
+                {
+                    "identifier": f"propdef_{idx}",
+                    "type": "string",
+                },
             )
-            n = ET.SubElement(prop_def, qname(NS_ARCHIMATE, "name"))
-            n.text = key
+            prop_name = ET.SubElement(prop_def, qname(NS_ARCHIMATE, "name"))
+            prop_name.text = key
 
     views_el = ET.SubElement(root, qname(NS_ARCHIMATE, "views"))
     diagrams_el = ET.SubElement(views_el, qname(NS_ARCHIMATE, "diagrams"))
 
     for view in model.views:
+        shift_x, shift_y = _compute_view_shift(view)
+
         view_el = ET.SubElement(
             diagrams_el,
             qname(NS_ARCHIMATE, "view"),
@@ -142,21 +188,24 @@ def export_archimate_exchange_xml(model: ArchimateModel) -> str:
                 qname(NS_XSI, "type"): "Diagram",
             },
         )
-        vn = ET.SubElement(view_el, qname(NS_ARCHIMATE, "name"))
-        vn.text = view.name
+
+        view_name = ET.SubElement(view_el, qname(NS_ARCHIMATE, "name"))
+        view_name.text = view.name
+
         if view.documentation:
-            vd = ET.SubElement(view_el, qname(NS_ARCHIMATE, "documentation"))
-            vd.text = view.documentation
+            view_doc = ET.SubElement(view_el, qname(NS_ARCHIMATE, "documentation"))
+            view_doc.text = view.documentation
 
         def _write_node(parent_el: ET.Element, node: Node) -> None:
             attrs: dict[str, str] = {
                 "identifier": node.id,
-                "x": str(node.x),
-                "y": str(node.y),
+                "x": str(node.x + shift_x),
+                "y": str(node.y + shift_y),
                 "w": str(node.w),
                 "h": str(node.h),
                 qname(NS_XSI, "type"): node.node_type,
             }
+
             if node.element_id is not None:
                 attrs["elementRef"] = node.element_id
 
@@ -169,7 +218,7 @@ def export_archimate_exchange_xml(model: ArchimateModel) -> str:
             _write_node(view_el, node)
 
         for connection in view.connections:
-            ET.SubElement(
+            conn_el = ET.SubElement(
                 view_el,
                 qname(NS_ARCHIMATE, "connection"),
                 {
@@ -180,6 +229,16 @@ def export_archimate_exchange_xml(model: ArchimateModel) -> str:
                     qname(NS_XSI, "type"): "Relationship",
                 },
             )
+
+            for bp in getattr(connection, "bendpoints", []):
+                ET.SubElement(
+                    conn_el,
+                    qname(NS_ARCHIMATE, "bendpoint"),
+                    {
+                        "x": str(bp.x + shift_x),
+                        "y": str(bp.y + shift_y),
+                    },
+                )
 
     xml_bytes = ET.tostring(root, encoding="utf-8", xml_declaration=True)
     return prettify(xml_bytes)

@@ -65,37 +65,69 @@
     <diagrams>
       <view identifier="view_default_application" xsi:type="Diagram">
         <name>Default Application View</name>
-        <node identifier="view_default_application_node_process_balance_inquiry" x="80" y="60" w="200" h="60" xsi:type="Element" elementRef="process_balance_inquiry"/>
-        <node identifier="view_default_application_node_actor_customer" x="320" y="60" w="200" h="60" xsi:type="Element" elementRef="actor_customer"/>
-        <node identifier="view_default_application_node_app_portal" x="80" y="280" w="200" h="60" xsi:type="Element" elementRef="app_portal"/>
-        <node identifier="view_default_application_node_data_account" x="320" y="280" w="200" h="60" xsi:type="Element" elementRef="data_account"/>
-        <node identifier="view_default_application_node_svc_accounts" x="560" y="280" w="200" h="60" xsi:type="Element" elementRef="svc_accounts"/>
-        <node identifier="view_default_application_node_sys_k8s" x="80" y="500" w="200" h="60" xsi:type="Element" elementRef="sys_k8s"/>
-        <node identifier="view_default_application_node_node_runtime" x="320" y="500" w="200" h="60" xsi:type="Element" elementRef="node_runtime"/>
-        <node identifier="view_default_application_node_device_vm" x="560" y="500" w="200" h="60" xsi:type="Element" elementRef="device_vm"/>
+        <node identifier="view_default_application_node_process_balance_inquiry" x="100" y="80" w="220" h="70" xsi:type="Element" elementRef="process_balance_inquiry"/>
+        <node identifier="view_default_application_node_actor_customer" x="440" y="80" w="220" h="70" xsi:type="Element" elementRef="actor_customer"/>
+        <node identifier="view_default_application_node_app_portal" x="100" y="390" w="220" h="70" xsi:type="Element" elementRef="app_portal"/>
+        <node identifier="view_default_application_node_data_account" x="440" y="390" w="220" h="70" xsi:type="Element" elementRef="data_account"/>
+        <node identifier="view_default_application_node_svc_accounts" x="780" y="390" w="220" h="70" xsi:type="Element" elementRef="svc_accounts"/>
+        <node identifier="view_default_application_node_sys_k8s" x="100" y="700" w="220" h="70" xsi:type="Element" elementRef="sys_k8s"/>
+        <node identifier="view_default_application_node_node_runtime" x="440" y="700" w="220" h="70" xsi:type="Element" elementRef="node_runtime"/>
+        <node identifier="view_default_application_node_device_vm" x="780" y="700" w="220" h="70" xsi:type="Element" elementRef="device_vm"/>
         <connection identifier="view_default_application_conn_rel_assign_1" relationshipRef="rel_assign_1" source="view_default_application_node_actor_customer" target="view_default_application_node_process_balance_inquiry" xsi:type="Relationship"/>
-        <connection identifier="view_default_application_conn_rel_realization_1" relationshipRef="rel_realization_1" source="view_default_application_node_app_portal" target="view_default_application_node_svc_accounts" xsi:type="Relationship"/>
-        <connection identifier="view_default_application_conn_rel_serving_1" relationshipRef="rel_serving_1" source="view_default_application_node_svc_accounts" target="view_default_application_node_app_portal" xsi:type="Relationship"/>
+        <connection identifier="view_default_application_conn_rel_realization_1" relationshipRef="rel_realization_1" source="view_default_application_node_app_portal" target="view_default_application_node_svc_accounts" xsi:type="Relationship">
+          <bendpoint x="384" y="425"/>
+          <bendpoint x="384" y="342"/>
+          <bendpoint x="716" y="342"/>
+          <bendpoint x="716" y="425"/>
+        </connection>
+        <connection identifier="view_default_application_conn_rel_serving_1" relationshipRef="rel_serving_1" source="view_default_application_node_svc_accounts" target="view_default_application_node_app_portal" xsi:type="Relationship">
+          <bendpoint x="716" y="425"/>
+          <bendpoint x="716" y="342"/>
+          <bendpoint x="384" y="342"/>
+          <bendpoint x="384" y="425"/>
+        </connection>
         <connection identifier="view_default_application_conn_rel_access_1" relationshipRef="rel_access_1" source="view_default_application_node_app_portal" target="view_default_application_node_data_account" xsi:type="Relationship"/>
         <connection identifier="view_default_application_conn_rel_comp_1" relationshipRef="rel_comp_1" source="view_default_application_node_device_vm" target="view_default_application_node_node_runtime" xsi:type="Relationship"/>
         <connection identifier="view_default_application_conn_rel_comp_2" relationshipRef="rel_comp_2" source="view_default_application_node_node_runtime" target="view_default_application_node_sys_k8s" xsi:type="Relationship"/>
-        <connection identifier="view_default_application_conn_rel_comp_3" relationshipRef="rel_comp_3" source="view_default_application_node_sys_k8s" target="view_default_application_node_app_portal" xsi:type="Relationship"/>
+        <connection identifier="view_default_application_conn_rel_comp_3" relationshipRef="rel_comp_3" source="view_default_application_node_sys_k8s" target="view_default_application_node_app_portal" xsi:type="Relationship">
+          <bendpoint x="84" y="735"/>
+        </connection>
       </view>
       <view identifier="view_application_cooperation" xsi:type="Diagram">
         <name>Application Cooperation View</name>
-        <node identifier="view_application_cooperation_node_data_account" x="80" y="60" w="200" h="60" xsi:type="Element" elementRef="data_account"/>
-        <node identifier="view_application_cooperation_node_svc_accounts" x="320" y="60" w="200" h="60" xsi:type="Element" elementRef="svc_accounts"/>
-        <node identifier="view_application_cooperation_node_app_portal" x="560" y="60" w="200" h="60" xsi:type="Element" elementRef="app_portal"/>
-        <connection identifier="view_application_cooperation_conn_rel_realization_1" relationshipRef="rel_realization_1" source="view_application_cooperation_node_app_portal" target="view_application_cooperation_node_svc_accounts" xsi:type="Relationship"/>
-        <connection identifier="view_application_cooperation_conn_rel_serving_1" relationshipRef="rel_serving_1" source="view_application_cooperation_node_svc_accounts" target="view_application_cooperation_node_app_portal" xsi:type="Relationship"/>
-        <connection identifier="view_application_cooperation_conn_rel_access_1" relationshipRef="rel_access_1" source="view_application_cooperation_node_app_portal" target="view_application_cooperation_node_data_account" xsi:type="Relationship"/>
+        <node identifier="view_application_cooperation_node_data_account" x="100" y="80" w="220" h="70" xsi:type="Element" elementRef="data_account"/>
+        <node identifier="view_application_cooperation_node_svc_accounts" x="440" y="80" w="220" h="70" xsi:type="Element" elementRef="svc_accounts"/>
+        <node identifier="view_application_cooperation_node_app_portal" x="780" y="80" w="220" h="70" xsi:type="Element" elementRef="app_portal"/>
+        <connection identifier="view_application_cooperation_conn_rel_realization_1" relationshipRef="rel_realization_1" source="view_application_cooperation_node_app_portal" target="view_application_cooperation_node_svc_accounts" xsi:type="Relationship">
+          <bendpoint x="716" y="115"/>
+          <bendpoint x="716" y="32"/>
+          <bendpoint x="724" y="32"/>
+          <bendpoint x="724" y="115"/>
+        </connection>
+        <connection identifier="view_application_cooperation_conn_rel_serving_1" relationshipRef="rel_serving_1" source="view_application_cooperation_node_svc_accounts" target="view_application_cooperation_node_app_portal" xsi:type="Relationship">
+          <bendpoint x="724" y="115"/>
+          <bendpoint x="724" y="32"/>
+          <bendpoint x="716" y="32"/>
+          <bendpoint x="716" y="115"/>
+        </connection>
+        <connection identifier="view_application_cooperation_conn_rel_access_1" relationshipRef="rel_access_1" source="view_application_cooperation_node_app_portal" target="view_application_cooperation_node_data_account" xsi:type="Relationship">
+          <bendpoint x="716" y="115"/>
+          <bendpoint x="716" y="32"/>
+          <bendpoint x="384" y="32"/>
+          <bendpoint x="384" y="115"/>
+        </connection>
       </view>
       <view identifier="view_technology" xsi:type="Diagram">
         <name>Technology View</name>
-        <node identifier="view_technology_node_node_runtime" x="80" y="60" w="200" h="60" xsi:type="Element" elementRef="node_runtime"/>
-        <node identifier="view_technology_node_sys_k8s" x="320" y="60" w="200" h="60" xsi:type="Element" elementRef="sys_k8s"/>
-        <node identifier="view_technology_node_device_vm" x="560" y="60" w="200" h="60" xsi:type="Element" elementRef="device_vm"/>
-        <connection identifier="view_technology_conn_rel_comp_1" relationshipRef="rel_comp_1" source="view_technology_node_device_vm" target="view_technology_node_node_runtime" xsi:type="Relationship"/>
+        <node identifier="view_technology_node_node_runtime" x="100" y="80" w="220" h="70" xsi:type="Element" elementRef="node_runtime"/>
+        <node identifier="view_technology_node_sys_k8s" x="440" y="80" w="220" h="70" xsi:type="Element" elementRef="sys_k8s"/>
+        <node identifier="view_technology_node_device_vm" x="780" y="80" w="220" h="70" xsi:type="Element" elementRef="device_vm"/>
+        <connection identifier="view_technology_conn_rel_comp_1" relationshipRef="rel_comp_1" source="view_technology_node_device_vm" target="view_technology_node_node_runtime" xsi:type="Relationship">
+          <bendpoint x="716" y="115"/>
+          <bendpoint x="716" y="32"/>
+          <bendpoint x="384" y="32"/>
+          <bendpoint x="384" y="115"/>
+        </connection>
         <connection identifier="view_technology_conn_rel_comp_2" relationshipRef="rel_comp_2" source="view_technology_node_node_runtime" target="view_technology_node_sys_k8s" xsi:type="Relationship"/>
       </view>
     </diagrams>
