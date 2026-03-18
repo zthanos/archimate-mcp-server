@@ -1,14 +1,10 @@
 from __future__ import annotations
 
-from collections import defaultdict
+from collections import defaultdict, deque
 from dataclasses import dataclass, field
 
 from .config import LayoutConfig
 
-
-# ---------------------------------------------------------------------------
-# Data structures
-# ---------------------------------------------------------------------------
 
 @dataclass
 class GridCell:
@@ -21,27 +17,22 @@ class GridCell:
 class PlacementGrid:
     """
     Sparse grid where:
-      row = ArchiMate layer index (strict: layer 0, 1, 2 ...)
-      col = horizontal position within a layer
-
-    Each (row, col) can hold at most one element.
+      row = vertical position in the placement lattice
+      col = horizontal position in the placement lattice
     """
+
     cells: list[GridCell] = field(default_factory=list)
     _occupied: dict[tuple[int, int], str] = field(default_factory=dict, repr=False)
     _element_pos: dict[str, tuple[int, int]] = field(default_factory=dict, repr=False)
 
     def place(self, row: int, col: int, element_id: str) -> int:
-        """Place element at (row, col), shifting right until free. Returns actual col."""
+        """Place an element at (row, col), shifting right until a free slot exists."""
         while (row, col) in self._occupied:
             col += 1
         self._occupied[(row, col)] = element_id
         self._element_pos[element_id] = (row, col)
         self.cells.append(GridCell(row=row, col=col, element_id=element_id))
         return col
-
-    def _update_pos(self, element_id: str, row: int, col: int) -> None:
-        """Update the position index after a cell move."""
-        self._element_pos[element_id] = (row, col)
 
     def col_of(self, element_id: str) -> int | None:
         pos = self._element_pos.get(element_id)
@@ -52,7 +43,7 @@ class PlacementGrid:
         return pos[0] if pos else None
 
     def elements_in_row(self, row: int) -> list[GridCell]:
-        return sorted([c for c in self.cells if c.row == row], key=lambda c: c.col)
+        return sorted((c for c in self.cells if c.row == row), key=lambda c: c.col)
 
     def is_occupied(self, row: int, col: int) -> bool:
         return (row, col) in self._occupied
@@ -66,56 +57,346 @@ class PlacementGrid:
         return max((c.row for c in self.cells), default=0)
 
 
-# ---------------------------------------------------------------------------
-# Cross-layer arrow analysis
-# ---------------------------------------------------------------------------
-
-@dataclass
-class CrossLayerArrow:
-    source_id: str
-    target_id: str
-    source_row: int
-    target_row: int
-    # Filled in after placement
-    source_col: int | None = None
-    target_col: int | None = None
+@dataclass(frozen=True)
+class ComponentPlacement:
+    positions: dict[str, tuple[int, int]]
 
     @property
-    def passes_through_rows(self) -> list[int]:
-        """Rows this arrow passes through (exclusive of src/tgt row)."""
-        lo = min(self.source_row, self.target_row)
-        hi = max(self.source_row, self.target_row)
-        return list(range(lo + 1, hi))
+    def bounds(self) -> tuple[int, int, int, int]:
+        rows = [row for row, _ in self.positions.values()]
+        cols = [col for _, col in self.positions.values()]
+        return min(rows), max(rows), min(cols), max(cols)
 
 
-def _build_cross_layer_arrows(
+@dataclass
+class _LayerPlacementContext:
+    element_ids: list[str]
+    same_layer_neighbors: dict[str, list[str]]
+    positions: dict[str, tuple[int, int]] = field(default_factory=dict)
+    occupied: dict[tuple[int, int], str] = field(default_factory=dict)
+    queue: deque[str] = field(default_factory=deque)
+    visited: set[str] = field(default_factory=set)
+
+    def place(self, element_id: str, row: int, col: int) -> None:
+        current = self.positions.get(element_id)
+        if current is not None:
+            self.occupied.pop(current, None)
+        self.positions[element_id] = (row, col)
+        self.occupied[(row, col)] = element_id
+
+    def is_free(self, row: int, col: int, moving_element: str | None = None) -> bool:
+        occupant = self.occupied.get((row, col))
+        return occupant is None or occupant == moving_element
+
+    def neighbors_of(self, element_id: str) -> list[str]:
+        return self.same_layer_neighbors.get(element_id, [])
+
+
+_DIRECTION_ORDER: tuple[str, ...] = ("E", "S", "W", "N")
+_DIRECTION_DELTAS: dict[str, tuple[int, int]] = {
+    "E": (0, 1),
+    "S": (1, 0),
+    "W": (0, -1),
+    "N": (-1, 0),
+}
+
+
+def _build_same_layer_neighbor_map(
     relationships: list,
     element_layer: dict[str, str],
-    layer_order: list[str],
-) -> list[CrossLayerArrow]:
-    layer_row = {lid: i for i, lid in enumerate(layer_order)}
-    arrows: list[CrossLayerArrow] = []
+) -> dict[str, list[str]]:
+    """Build an undirected adjacency map for elements in the same layer."""
+    neighbors: dict[str, list[str]] = defaultdict(list)
     for rel in relationships:
-        sl = element_layer.get(rel.source)
-        tl = element_layer.get(rel.target)
-        if not sl or not tl or sl == tl:
+        source_layer = element_layer.get(rel.source)
+        target_layer = element_layer.get(rel.target)
+        if source_layer is None or target_layer is None or source_layer != target_layer:
             continue
-        sr = layer_row.get(sl)
-        tr = layer_row.get(tl)
-        if sr is None or tr is None:
-            continue
-        arrows.append(CrossLayerArrow(
-            source_id=rel.source,
-            target_id=rel.target,
-            source_row=sr,
-            target_row=tr,
-        ))
-    return arrows
+        neighbors[rel.source].append(rel.target)
+        neighbors[rel.target].append(rel.source)
+    return neighbors
 
 
-# ---------------------------------------------------------------------------
-# Smart placement algorithm
-# ---------------------------------------------------------------------------
+def _connected_components(element_ids: list[str], neighbors: dict[str, list[str]]) -> list[list[str]]:
+    """Return same-layer connected components, preserving input order."""
+    remaining = set(element_ids)
+    components: list[list[str]] = []
+
+    for element_id in element_ids:
+        if element_id not in remaining:
+            continue
+
+        component: list[str] = []
+        stack = [element_id]
+        remaining.remove(element_id)
+
+        while stack:
+            current = stack.pop()
+            component.append(current)
+            for neighbor in neighbors.get(current, []):
+                if neighbor in remaining:
+                    remaining.remove(neighbor)
+                    stack.append(neighbor)
+
+        components.append(component)
+
+    return components
+
+
+def _manhattan(a: tuple[int, int], b: tuple[int, int]) -> int:
+    return abs(a[0] - b[0]) + abs(a[1] - b[1])
+
+
+def _candidate_positions(anchor: tuple[int, int], direction: str, max_radius: int = 4) -> list[tuple[int, int]]:
+    """
+    Generate candidate cells extending from an anchor in one cardinal direction.
+
+    We start with the direct adjacent cell and then widen slightly around the same side
+    before expanding farther out.
+    """
+    row, col = anchor
+    d_row, d_col = _DIRECTION_DELTAS[direction]
+    candidates: list[tuple[int, int]] = []
+
+    for distance in range(1, max_radius + 1):
+        base_row = row + d_row * distance
+        base_col = col + d_col * distance
+        candidates.append((base_row, base_col))
+
+        if direction in ("E", "W"):
+            for spread in range(1, distance + 1):
+                candidates.append((base_row - spread, base_col))
+                candidates.append((base_row + spread, base_col))
+        else:
+            for spread in range(1, distance + 1):
+                candidates.append((base_row, base_col - spread))
+                candidates.append((base_row, base_col + spread))
+
+    seen: set[tuple[int, int]] = set()
+    ordered: list[tuple[int, int]] = []
+    for candidate in candidates:
+        if candidate in seen:
+            continue
+        seen.add(candidate)
+        ordered.append(candidate)
+    return ordered
+
+
+def _score_position(
+    element_id: str,
+    candidate: tuple[int, int],
+    anchor_id: str,
+    direction: str,
+    ctx: _LayerPlacementContext,
+) -> float:
+    """
+    Score a candidate cell for an element.
+
+    Higher is better:
+    - close to already placed related elements
+    - directly on the requested side of the current anchor
+    - not too crowded compared with unrelated nodes
+    """
+    anchor_pos = ctx.positions[anchor_id]
+    score = 0.0
+
+    if _manhattan(candidate, anchor_pos) == 1:
+        score += 30.0
+
+    row_delta = candidate[0] - anchor_pos[0]
+    col_delta = candidate[1] - anchor_pos[1]
+    if direction == "E" and col_delta > 0:
+        score += 20.0
+    elif direction == "W" and col_delta < 0:
+        score += 20.0
+    elif direction == "N" and row_delta < 0:
+        score += 20.0
+    elif direction == "S" and row_delta > 0:
+        score += 20.0
+
+    for neighbor_id in ctx.neighbors_of(element_id):
+        neighbor_pos = ctx.positions.get(neighbor_id)
+        if neighbor_pos is None:
+            continue
+        distance = _manhattan(candidate, neighbor_pos)
+        score += max(0.0, 18.0 - distance * 4.0)
+        if neighbor_pos[0] == candidate[0] or neighbor_pos[1] == candidate[1]:
+            score += 3.0
+
+    for other_id, other_pos in ctx.positions.items():
+        if other_id == element_id or other_id in ctx.neighbors_of(element_id):
+            continue
+        distance = _manhattan(candidate, other_pos)
+        if distance == 1:
+            score -= 10.0
+        elif distance == 2:
+            score -= 3.0
+
+    related_positions = [
+        ctx.positions[neighbor_id]
+        for neighbor_id in ctx.neighbors_of(element_id)
+        if neighbor_id in ctx.positions
+    ]
+    if related_positions:
+        avg_row = sum(row for row, _ in related_positions) / len(related_positions)
+        avg_col = sum(col for _, col in related_positions) / len(related_positions)
+        score -= abs(candidate[0] - avg_row) * 1.5
+        score -= abs(candidate[1] - avg_col) * 1.5
+
+    return score
+
+
+def _choose_best_position(
+    element_id: str,
+    anchor_id: str,
+    preferred_direction: str,
+    ctx: _LayerPlacementContext,
+) -> tuple[int, int]:
+    """Choose the best available cell for an element around an anchor."""
+    best_candidate: tuple[int, int] | None = None
+    best_score: float | None = None
+
+    direction_priority = [preferred_direction] + [
+        direction for direction in _DIRECTION_ORDER if direction != preferred_direction
+    ]
+
+    for direction in direction_priority:
+        for candidate in _candidate_positions(ctx.positions[anchor_id], direction):
+            if not ctx.is_free(candidate[0], candidate[1], moving_element=element_id):
+                continue
+            score = _score_position(element_id, candidate, anchor_id, direction, ctx)
+            if best_score is None or score > best_score:
+                best_score = score
+                best_candidate = candidate
+
+        if best_candidate is not None and direction == preferred_direction:
+            break
+
+    if best_candidate is None:
+        anchor_row, anchor_col = ctx.positions[anchor_id]
+        return (anchor_row, anchor_col + 1)
+    return best_candidate
+
+
+def _try_relocate_element(element_id: str, anchor_id: str, ctx: _LayerPlacementContext) -> None:
+    """
+    Re-evaluate an already placed element when a new anchor relationship becomes visible.
+
+    This keeps placements provisional instead of locking them forever on first sight.
+    """
+    current_pos = ctx.positions[element_id]
+    best_pos = current_pos
+    best_score = _score_position(element_id, current_pos, anchor_id, "E", ctx)
+
+    for direction in _DIRECTION_ORDER:
+        for candidate in _candidate_positions(ctx.positions[anchor_id], direction, max_radius=3):
+            if not ctx.is_free(candidate[0], candidate[1], moving_element=element_id):
+                continue
+            score = _score_position(element_id, candidate, anchor_id, direction, ctx)
+            if score > best_score + 6.0:
+                best_score = score
+                best_pos = candidate
+
+    if best_pos != current_pos:
+        ctx.place(element_id, best_pos[0], best_pos[1])
+
+
+def _place_component(component_ids: list[str], neighbors: dict[str, list[str]]) -> ComponentPlacement:
+    """
+    Place a connected component by graph expansion.
+
+    The first element acts as the initial root. Every next placed element can in turn
+    expand its own direct neighbors, which keeps the layout relationship-first.
+    """
+    root_id = component_ids[0]
+    ctx = _LayerPlacementContext(
+        element_ids=component_ids,
+        same_layer_neighbors=neighbors,
+    )
+    ctx.place(root_id, 0, 0)
+    ctx.queue.append(root_id)
+    ctx.visited.add(root_id)
+
+    while ctx.queue:
+        current_id = ctx.queue.popleft()
+        related_ids = [
+            neighbor_id
+            for neighbor_id in ctx.neighbors_of(current_id)
+            if neighbor_id in component_ids
+        ]
+
+        related_ids.sort(
+            key=lambda neighbor_id: (
+                neighbor_id in ctx.positions,
+                -len([n for n in ctx.neighbors_of(neighbor_id) if n in ctx.positions]),
+                neighbor_id,
+            )
+        )
+
+        for index, neighbor_id in enumerate(related_ids):
+            preferred_direction = _DIRECTION_ORDER[index % len(_DIRECTION_ORDER)]
+            if neighbor_id not in ctx.positions:
+                row, col = _choose_best_position(
+                    neighbor_id,
+                    current_id,
+                    preferred_direction,
+                    ctx,
+                )
+                ctx.place(neighbor_id, row, col)
+                if neighbor_id not in ctx.visited:
+                    ctx.visited.add(neighbor_id)
+                    ctx.queue.append(neighbor_id)
+            else:
+                _try_relocate_element(neighbor_id, current_id, ctx)
+
+    return ComponentPlacement(positions=dict(ctx.positions))
+
+
+def _normalize_component(component: ComponentPlacement) -> ComponentPlacement:
+    """Shift a component so that its top-left corner starts at (0, 0)."""
+    min_row, _, min_col, _ = component.bounds
+    normalized = {
+        element_id: (row - min_row, col - min_col)
+        for element_id, (row, col) in component.positions.items()
+    }
+    return ComponentPlacement(positions=normalized)
+
+
+def _pack_components(
+    components: list[ComponentPlacement],
+    width_cap: int,
+) -> tuple[dict[str, tuple[int, int]], int]:
+    """
+    Pack normalized components into a layer using a simple shelf layout.
+
+    The cap applies to whole components, not individual elements. That keeps the
+    layout flexible while still preventing one infinitely wide strip.
+    """
+    packed_positions: dict[str, tuple[int, int]] = {}
+    cursor_row = 0
+    cursor_col = 0
+    shelf_height = 0
+
+    for component in components:
+        min_row, max_row, min_col, max_col = component.bounds
+        comp_height = max_row - min_row + 1
+        comp_width = max_col - min_col + 1
+
+        effective_cap = max(width_cap, comp_width)
+        if cursor_col > 0 and cursor_col + comp_width > effective_cap:
+            cursor_row += shelf_height + 2
+            cursor_col = 0
+            shelf_height = 0
+
+        for element_id, (row, col) in component.positions.items():
+            packed_positions[element_id] = (cursor_row + row, cursor_col + col)
+
+        cursor_col += comp_width + 2
+        shelf_height = max(shelf_height, comp_height)
+
+    total_rows = cursor_row + shelf_height
+    return packed_positions, total_rows
+
 
 def build_smart_grid(
     layer_elements: dict[str, list],
@@ -125,221 +406,74 @@ def build_smart_grid(
     max_cols_per_row: int = 6,
 ) -> tuple[PlacementGrid, set[int]]:
     """
-    Place elements in a smart grid with:
+    Build a sparse grid through graph expansion instead of fixed row packing.
 
-    1. Row wrapping: if a layer has more than max_cols_per_row elements,
-       they wrap into multiple sub-rows within the same layer band.
-    2. Column alignment: elements connected cross-layer prefer the same column.
-    3. Collision avoidance: shift elements that block cross-layer arrows.
+    For each layer:
+    1. split into connected components
+    2. use the first element as the root of each component
+    3. place direct relations around each current root in W/E/N/S
+    4. expand iteratively, allowing local relocation when a better side appears
+    5. pack completed components into the layer with a soft width cap
     """
     grid = PlacementGrid()
+    same_layer_neighbors = _build_same_layer_neighbor_map(relationships, element_layer)
 
-    # Build active layer order (skip empty layers)
-    active_layers = [lid for lid in layer_order if layer_elements.get(lid)]
+    active_layers = [layer_id for layer_id in layer_order if layer_elements.get(layer_id)]
+    layer_boundary_rows: set[int] = set()
+    row_offset = 0
 
-    # Assign row ranges per layer — each layer gets ceil(n/max_cols) rows
-    layer_row_start: dict[str, int] = {}
-    layer_row_count: dict[str, int] = {}
-    current_row = 0
-    for lid in active_layers:
-        n = len(layer_elements.get(lid, []))
-        n_rows = max(1, (n + max_cols_per_row - 1) // max_cols_per_row)
-        layer_row_start[lid] = current_row
-        layer_row_count[lid] = n_rows
-        current_row += n_rows
-
-    # The first row of each layer is a "layer boundary"
-    # (used by GridMetrics to apply layer_v_gap instead of row_v_gap)
-    layer_boundary_rows: set[int] = {r for r in layer_row_start.values()}
-
-    # element_layer → row index (first row of its layer)
-    element_row: dict[str, int] = {}
-    for el_id, lid in element_layer.items():
-        if lid in layer_row_start:
-            element_row[el_id] = layer_row_start[lid]
-
-    # Cross-layer neighbor map (for column inheritance)
-    cross_layer_neighbors: dict[str, list[str]] = defaultdict(list)
-    for rel in relationships:
-        sr = element_row.get(rel.source)
-        tr = element_row.get(rel.target)
-        if sr is not None and tr is not None and sr != tr:
-            cross_layer_neighbors[rel.source].append(rel.target)
-            cross_layer_neighbors[rel.target].append(rel.source)
-
-    # --- Pass 1: Place elements layer by layer with wrapping ---
     for layer_id in active_layers:
         items = layer_elements.get(layer_id, [])
-        row_start = layer_row_start[layer_id]
-        n_rows = layer_row_count[layer_id]
+        element_ids = [item.id for item in items]
+        components = _connected_components(element_ids, same_layer_neighbors)
 
-        # Sort: cross-layer connected first for better alignment
-        def sort_key(el):
-            neighbors = cross_layer_neighbors.get(el.id, [])
-            placed = [n for n in neighbors if grid.col_of(n) is not None]
-            return (-len(placed), -len(neighbors), el.name)
+        placed_components = [
+            _normalize_component(_place_component(component_ids, same_layer_neighbors))
+            for component_ids in components
+        ]
 
-        sorted_items = sorted(items, key=sort_key)
+        packed_positions, layer_height = _pack_components(
+            placed_components,
+            width_cap=max(4, max_cols_per_row),
+        )
 
-        for idx, element in enumerate(sorted_items):
-            # Distribute across sub-rows: fill row by row
-            sub_row = row_start + (idx // max_cols_per_row)
-            preferred = _preferred_col(element.id, cross_layer_neighbors, grid, sub_row)
-            actual_col = grid.place(sub_row, preferred, element.id)
-            # Update element_row to actual sub-row for cross-layer arrow logic
-            element_row[element.id] = sub_row
+        layer_boundary_rows.add(row_offset)
+        for element_id in element_ids:
+            local_row, local_col = packed_positions[element_id]
+            grid.place(row_offset + local_row, local_col, element_id)
 
-    # --- Pass 2: Collision avoidance ---
-    cross_arrows = _build_cross_layer_arrows(relationships, element_layer, active_layers)
-
-    for arrow in cross_arrows:
-        src_col = grid.col_of(arrow.source_id)
-        tgt_col = grid.col_of(arrow.target_id)
-        if src_col is None or tgt_col is None:
-            continue
-
-        arrow_cols = set(range(min(src_col, tgt_col), max(src_col, tgt_col) + 1))
-
-        src_lid = element_layer.get(arrow.source_id)
-        tgt_lid = element_layer.get(arrow.target_id)
-        if not src_lid or not tgt_lid:
-            continue
-        src_row = layer_row_start.get(src_lid)
-        tgt_row = layer_row_start.get(tgt_lid)
-        if src_row is None or tgt_row is None:
-            continue
-
-        lo_row = min(src_row, tgt_row)
-        hi_row = max(src_row, tgt_row)
-
-        for mid_row in range(lo_row + 1, hi_row):
-            for col in arrow_cols:
-                if not grid.is_occupied(mid_row, col):
-                    continue
-                blocking_id = grid._occupied[(mid_row, col)]
-                if blocking_id in (arrow.source_id, arrow.target_id):
-                    continue
-                new_col = max(arrow_cols) + 1
-                grid._occupied.pop((mid_row, col))
-                for i, cell in enumerate(grid.cells):
-                    if cell.element_id == blocking_id:
-                        grid.cells[i] = GridCell(row=mid_row, col=new_col, element_id=blocking_id)
-                        break
-                grid._occupied[(mid_row, new_col)] = blocking_id
-                grid._update_pos(blocking_id, mid_row, new_col)
-
-    # --- Pass 3: Same-row reordering ---
-    same_row_neighbors: dict[str, list[str]] = defaultdict(list)
-    for rel in relationships:
-        sr = element_row.get(rel.source)
-        tr = element_row.get(rel.target)
-        if sr is not None and tr is not None and sr == tr:
-            same_row_neighbors[rel.source].append(rel.target)
-            same_row_neighbors[rel.target].append(rel.source)
-
-    for layer_id in active_layers:
-        start_row = layer_row_start[layer_id]
-        n_rows = layer_row_count[layer_id]
-        for row in range(start_row, start_row + n_rows):
-            cells = grid.elements_in_row(row)
-            if len(cells) < 3:
-                continue
-
-            element_ids = [c.element_id for c in cells]
-
-            def same_row_degree(eid):
-                return len([n for n in same_row_neighbors.get(eid, []) if n in element_ids])
-
-            center = max(element_ids, key=same_row_degree)
-            if same_row_degree(center) == 0:
-                continue
-
-            neighbors = [n for n in same_row_neighbors.get(center, []) if n in element_ids]
-            others = [e for e in element_ids if e != center and e not in neighbors]
-            left_neighbors  = neighbors[:len(neighbors) // 2]
-            right_neighbors = neighbors[len(neighbors) // 2:]
-            new_order = (others[:len(others) // 2] + left_neighbors +
-                         [center] + right_neighbors + others[len(others) // 2:])
-
-            grid._occupied = {k: v for k, v in grid._occupied.items() if k[0] != row}
-            for new_col, eid in enumerate(new_order):
-                grid._occupied[(row, new_col)] = eid
-                grid._update_pos(eid, row, new_col)
-                for i, cell in enumerate(grid.cells):
-                    if cell.element_id == eid:
-                        grid.cells[i] = GridCell(row=row, col=new_col, element_id=eid)
-                        break
+        row_offset += max(1, layer_height)
 
     return grid, layer_boundary_rows
 
-
-def _preferred_col(
-    element_id: str,
-    cross_layer_neighbors: dict[str, list[str]],
-    grid: PlacementGrid,
-    row: int,
-    same_row_neighbors: dict[str, list[str]] | None = None,
-) -> int:
-    neighbors = cross_layer_neighbors.get(element_id, [])
-    placed_cols = [grid.col_of(n) for n in neighbors if grid.col_of(n) is not None]
-
-    # Also consider same-row (same-layer) neighbors for spread
-    same_row_placed = []
-    if same_row_neighbors:
-        sr_neighbors = same_row_neighbors.get(element_id, [])
-        same_row_placed = [grid.col_of(n) for n in sr_neighbors if grid.col_of(n) is not None]
-
-    if not placed_cols and not same_row_placed:
-        # No neighbors placed yet — use next free col in this row
-        occupied = {c.col for c in grid.cells if c.row == row}
-        col = 0
-        while col in occupied:
-            col += 1
-        return col
-
-    if placed_cols:
-        # Align with cross-layer neighbor (median)
-        placed_cols.sort()
-        preferred = placed_cols[len(placed_cols) // 2]
-        # If a same-row neighbor is right next to us, spread by 1 extra col
-        if same_row_placed:
-            for sr_col in same_row_placed:
-                if abs(preferred - sr_col) <= 1:
-                    preferred = max(same_row_placed) + 2  # leave a gap
-        return preferred
-
-    # Only same-row neighbors placed — go next to them with a gap
-    return max(same_row_placed) + 2
-
-
-# ---------------------------------------------------------------------------
-# Grid → pixel coordinates
-# ---------------------------------------------------------------------------
 
 @dataclass
 class GridMetrics:
     col_widths: dict[int, int]
     row_heights: dict[int, int]
     cfg: LayoutConfig
-    layer_boundary_rows: set[int] = None  # rows that start a new layer
+    layer_boundary_rows: set[int] | None = None
 
     def __post_init__(self):
         if self.layer_boundary_rows is None:
-            object.__setattr__(self, 'layer_boundary_rows', set())
+            object.__setattr__(self, "layer_boundary_rows", set())
 
     def x_of(self, col: int) -> int:
         x = self.cfg.margin_left
-        for c in range(col):
-            x += self.col_widths.get(c, self.cfg.node_w) + self.cfg.h_gap
+        for current_col in range(col):
+            x += self.col_widths.get(current_col, self.cfg.node_w) + self.cfg.h_gap
         return x
 
     def y_of(self, row: int) -> int:
         y = self.cfg.margin_top
-        for r in range(row):
-            h = self.row_heights.get(r, self.cfg.node_h)
-            # Use layer_v_gap between layers, row_v_gap between wrapped sub-rows
-            gap = self.cfg.layer_v_gap if (r + 1) in self.layer_boundary_rows else self.cfg.row_v_gap
-            y += h + gap
+        for current_row in range(row):
+            height = self.row_heights.get(current_row, self.cfg.node_h)
+            gap = (
+                self.cfg.layer_v_gap
+                if (current_row + 1) in self.layer_boundary_rows
+                else self.cfg.row_v_gap
+            )
+            y += height + gap
         return y
 
 
@@ -353,9 +487,9 @@ def compute_grid_metrics(
     row_heights: dict[int, int] = defaultdict(int)
 
     for cell in grid.cells:
-        w, h = node_sizes.get(cell.element_id, (cfg.node_w, cfg.node_h))
-        col_widths[cell.col]  = max(col_widths[cell.col],  w)
-        row_heights[cell.row] = max(row_heights[cell.row], h)
+        width, height = node_sizes.get(cell.element_id, (cfg.node_w, cfg.node_h))
+        col_widths[cell.col] = max(col_widths[cell.col], width)
+        row_heights[cell.row] = max(row_heights[cell.row], height)
 
     return GridMetrics(
         col_widths=dict(col_widths),

@@ -30,8 +30,8 @@ class LayoutConfig:
     lane_base:       int = 48    # base offset for routed lanes
     lane_step:       int = 24    # increment per additional lane
 
-    # Grid wrapping
-    max_cols_per_row: int = 5    # wrap to next row after this many columns per layer
+    # Grid placement
+    max_cols_per_row: int = 5    # soft safety cap for very wide rows
 
 
 DEFAULT_CONFIG = LayoutConfig()
