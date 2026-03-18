@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 from .config import DEFAULT_CONFIG, LayoutConfig
 from .grid import build_smart_grid, compute_grid_metrics
+from .lanes import LaneAllocator
 from .models import ArchimateModel, BendPoint, Connection, Element, Node, View
 from .ports import Edge, Port, assign_ports
 
@@ -166,88 +167,154 @@ def _path_is_clear(
 # Routing
 # ---------------------------------------------------------------------------
 
+def _band_h(y1: int, y2: int, cfg: LayoutConfig) -> tuple[int, int]:
+    lo, hi = min(y1, y2), max(y1, y2)
+    margin = cfg.lane_base
+    return (lo + margin, hi - margin)
+
+
+def _band_v(x1: int, x2: int, cfg: LayoutConfig) -> tuple[int, int]:
+    lo, hi = min(x1, x2), max(x1, x2)
+    margin = cfg.lane_base
+    return (lo + margin, hi - margin)
+
+
 def _route_between_ports(
     src_port: Port,
     tgt_port: Port,
     obstacles: list[Node],
     cfg: LayoutConfig,
+    lanes: LaneAllocator,
 ) -> list[BendPoint]:
     """
-    Find bendpoints between two pre-assigned port points.
-    The port points are included as the first and last bendpoints
-    so Archi respects the exact entry/exit position on each node.
+    Route between two pre-assigned port points using lane allocation.
+
+    Path: src_port.point → escape → lane travel → entry → tgt_port.point
     """
-    start = (src_port.point.x, src_port.point.y)
-    end   = (tgt_port.point.x, tgt_port.point.y)
+    sx, sy = src_port.point.x, src_port.point.y
+    tx, ty = tgt_port.point.x, tgt_port.point.y
+    rel_id = f"{src_port.node_id}->{tgt_port.node_id}"
+    skip   = frozenset({src_port.node_id, tgt_port.node_id})
+    gap    = cfg.anchor_offset
 
-    # Always include explicit anchor points just outside the node edge
-    # so Archi uses the correct slot position
-    anchor_gap = cfg.anchor_offset
+    def escape(port: Port) -> tuple[int, int]:
+        x, y = port.point.x, port.point.y
+        if port.edge == Edge.E: return (x + gap, y)
+        if port.edge == Edge.W: return (x - gap, y)
+        if port.edge == Edge.S: return (x, y + gap)
+        return (x, y - gap)
 
-    if src_port.edge == Edge.E:
-        p_start = (start[0] + anchor_gap, start[1])
-    elif src_port.edge == Edge.W:
-        p_start = (start[0] - anchor_gap, start[1])
-    elif src_port.edge == Edge.S:
-        p_start = (start[0], start[1] + anchor_gap)
-    else:  # N
-        p_start = (start[0], start[1] - anchor_gap)
+    p0 = escape(src_port)
+    p3 = escape(tgt_port)
+    src_vertical = src_port.edge in (Edge.N, Edge.S)
 
-    if tgt_port.edge == Edge.W:
-        p_end = (end[0] - anchor_gap, end[1])
-    elif tgt_port.edge == Edge.E:
-        p_end = (end[0] + anchor_gap, end[1])
-    elif tgt_port.edge == Edge.N:
-        p_end = (end[0], end[1] - anchor_gap)
-    else:  # S
-        p_end = (end[0], end[1] + anchor_gap)
+    def commit_h_lane(y: int, x1: int, x2: int, band: tuple[int, int]) -> None:
+        if x1 != x2:
+            lanes.reserve_h_lane(band, y, min(x1, x2), max(x1, x2), rel_id)
 
-    # Try direct route between the two anchor points
-    for candidate in [
-        [p_start, p_end],
-        [p_start, (p_end[0],   p_start[1]), p_end],   # H → V
-        [p_start, (p_start[0], p_end[1]),   p_end],   # V → H
-    ]:
-        norm = _normalize(candidate)
-        if _path_is_clear(norm, obstacles,
-                          src_port.node_id, tgt_port.node_id, cfg.route_padding):
-            # Wrap with explicit port anchor points as first/last bendpoints
-            full = _normalize([start] + norm + [end])
-            return _to_bendpoints(full)
+    def commit_v_lane(x: int, y1: int, y2: int, band: tuple[int, int]) -> None:
+        if y1 != y2:
+            lanes.reserve_v_lane(band, x, min(y1, y2), max(y1, y2), rel_id)
 
-    # Route around obstacles via lateral lanes
-    is_vertical = src_port.edge in (Edge.N, Edge.S)
+    def try_path(
+        points: list[tuple[int, int]],
+        h_reservations: list[tuple[tuple[int, int], int, int, int]],
+        v_reservations: list[tuple[tuple[int, int], int, int, int]],
+    ) -> list[BendPoint] | None:
+        candidate = _normalize(points)
+        if not _path_is_clear(
+            candidate,
+            obstacles,
+            src_port.node_id,
+            tgt_port.node_id,
+            cfg.route_padding,
+        ):
+            return None
 
-    if is_vertical:
-        left_base  = min(p_start[0], p_end[0]) - cfg.lane_base
-        right_base = max(p_start[0], p_end[0]) + cfg.lane_base
-        for i in range(12):
-            for lane_x in [left_base  - i * cfg.lane_step,
-                           right_base + i * cfg.lane_step]:
-                candidate = _normalize([
-                    p_start, (lane_x, p_start[1]), (lane_x, p_end[1]), p_end
-                ])
-                if _path_is_clear(candidate, obstacles,
-                                  src_port.node_id, tgt_port.node_id, cfg.route_padding):
-                    full = _normalize([start] + candidate + [end])
-                    return _to_bendpoints(full)
+        for band, y, x1, x2 in h_reservations:
+            if x1 == x2:
+                continue
+            if not lanes.can_use_h_lane(band, y, min(x1, x2), max(x1, x2), obstacles, skip):
+                return None
+
+        for band, x, y1, y2 in v_reservations:
+            if y1 == y2:
+                continue
+            if not lanes.can_use_v_lane(band, x, min(y1, y2), max(y1, y2), obstacles, skip):
+                return None
+
+        for band, y, x1, x2 in h_reservations:
+            commit_h_lane(y, x1, x2, band)
+        for band, x, y1, y2 in v_reservations:
+            commit_v_lane(x, y1, y2, band)
+        return _to_bendpoints(candidate)
+
+    if src_vertical:
+        band = _band_h(p0[1], p3[1], cfg)
+        if band[0] < band[1]:
+            for lane_y in lanes.iter_h_lanes(band):
+                routed = try_path(
+                    [(sx, sy), p0, (p0[0], lane_y), (p3[0], lane_y), p3, (tx, ty)],
+                    [(band, lane_y, p0[0], p3[0])],
+                    [],
+                )
+                if routed is not None:
+                    return routed
     else:
-        top_base    = min(p_start[1], p_end[1]) - cfg.lane_base
-        bottom_base = max(p_start[1], p_end[1]) + cfg.lane_base
-        for i in range(12):
-            for lane_y in [top_base    - i * cfg.lane_step,
-                           bottom_base + i * cfg.lane_step]:
-                candidate = _normalize([
-                    p_start, (p_start[0], lane_y), (p_end[0], lane_y), p_end
-                ])
-                if _path_is_clear(candidate, obstacles,
-                                  src_port.node_id, tgt_port.node_id, cfg.route_padding):
-                    full = _normalize([start] + candidate + [end])
-                    return _to_bendpoints(full)
+        band = _band_v(p0[0], p3[0], cfg)
+        if band[0] < band[1]:
+            for lane_x in lanes.iter_v_lanes(band):
+                routed = try_path(
+                    [(sx, sy), p0, (lane_x, p0[1]), (lane_x, p3[1]), p3, (tx, ty)],
+                    [],
+                    [(band, lane_x, p0[1], p3[1])],
+                )
+                if routed is not None:
+                    return routed
 
-    # Fallback
-    fallback = _normalize([start, p_start, (p_start[0], p_end[1]), p_end, end])
-    return _to_bendpoints(fallback)
+    h_band = _band_h(p0[1], p3[1], cfg)
+    v_band = _band_v(p0[0], p3[0], cfg)
+    if h_band[0] < h_band[1] and v_band[0] < v_band[1]:
+        h_candidates = lanes.iter_h_lanes(h_band)[:8]
+        v_candidates = lanes.iter_v_lanes(v_band)[:8]
+        for lane_y in h_candidates:
+            for lane_x in v_candidates:
+                routed = try_path(
+                    [(sx, sy), p0, (p0[0], lane_y), (lane_x, lane_y), (lane_x, p3[1]), p3, (tx, ty)],
+                    [(h_band, lane_y, p0[0], lane_x)],
+                    [(v_band, lane_x, lane_y, p3[1])],
+                )
+                if routed is not None:
+                    return routed
+
+                routed = try_path(
+                    [(sx, sy), p0, (lane_x, p0[1]), (lane_x, lane_y), (p3[0], lane_y), p3, (tx, ty)],
+                    [(h_band, lane_y, lane_x, p3[0])],
+                    [(v_band, lane_x, p0[1], lane_y)],
+                )
+                if routed is not None:
+                    return routed
+
+    for corner in [(p0[0], p3[1]), (p3[0], p0[1])]:
+        candidate = _normalize([(sx, sy), p0, corner, p3, (tx, ty)])
+        if _path_is_clear(candidate, obstacles, src_port.node_id, tgt_port.node_id, cfg.route_padding):
+            return _to_bendpoints(candidate)
+
+    straight = _normalize([(sx, sy), (tx, ty)])
+    if _path_is_clear(straight, obstacles, src_port.node_id, tgt_port.node_id, cfg.route_padding):
+        return _to_bendpoints(straight)
+
+    for i in range(12):
+        for dy in [-(cfg.lane_base + i * cfg.lane_step), (cfg.lane_base + i * cfg.lane_step)]:
+            candidate = _normalize([(sx, sy), (p0[0], p0[1] + dy), (p3[0], p0[1] + dy), (tx, ty)])
+            if _path_is_clear(candidate, obstacles, src_port.node_id, tgt_port.node_id, cfg.route_padding):
+                return _to_bendpoints(candidate)
+        for dx in [-(cfg.lane_base + i * cfg.lane_step), (cfg.lane_base + i * cfg.lane_step)]:
+            candidate = _normalize([(sx, sy), (p0[0] + dx, p0[1]), (p0[0] + dx, p3[1]), (tx, ty)])
+            if _path_is_clear(candidate, obstacles, src_port.node_id, tgt_port.node_id, cfg.route_padding):
+                return _to_bendpoints(candidate)
+
+    return _to_bendpoints(_normalize([(sx, sy), p0, (p0[0], p3[1]), p3, (tx, ty)]))
 
 
 # ---------------------------------------------------------------------------
@@ -426,6 +493,13 @@ def _build_connections_with_routing(
     # Assign ports — determines exit/entry points for every connection
     port_map = assign_ports(node_by_id, visible)
 
+    # One LaneAllocator per view — shared across all connections
+    lanes = LaneAllocator(
+        h_step=cfg.lane_step,
+        v_step=cfg.lane_step,
+        padding=cfg.route_padding // 2,
+    )
+
     connections: list[Connection] = []
     for rel_id, src_nid, tgt_nid in visible:
         ports = port_map.get(rel_id)
@@ -434,7 +508,7 @@ def _build_connections_with_routing(
         src_port, tgt_port = ports
 
         bendpoints = _route_between_ports(
-            src_port, tgt_port, top_level_nodes, cfg
+            src_port, tgt_port, top_level_nodes, cfg, lanes
         )
         connections.append(Connection(
             id=f"{view_id}_conn_{rel_id}",

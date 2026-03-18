@@ -12,7 +12,7 @@ It supports:
 
 * Model validation (ArchiMate rules)
 * Automatic view generation (layout engine)
-* Export to ArchiMate Open Exchange Format (XML)
+* Export to ArchiMate Open Exchange Format (tool-agnostic, compatible with Archi and other tools)
 * Integration with LLM agents via MCP skills
 
 
@@ -84,7 +84,7 @@ CLI export example:
 uv run archimate-mcp-cli export src/archimate_mcp/examples/sample_model.json --output out/model.xml
 ```
 
-Import into Archi:
+Import into any tool that supports ArchiMate Open Exchange Format (e.g. Archi):
 
 ```
 File → Import → Open Exchange File
