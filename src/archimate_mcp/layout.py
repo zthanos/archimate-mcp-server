@@ -163,6 +163,75 @@ def _path_is_clear(
     )
 
 
+def _horizontal_blockers(
+    x1: int,
+    x2: int,
+    y: int,
+    obstacles: list[Node],
+    skip_ids: frozenset[str],
+    padding: int,
+) -> list[Node]:
+    """Return obstacles intersected by a horizontal segment."""
+    blockers: list[Node] = []
+    for node in obstacles:
+        if node.id in skip_ids:
+            continue
+        if _segment_hits_rect(x1, y, x2, y, node, padding):
+            blockers.append(node)
+    return blockers
+
+
+def _expand_horizontal_route_corridors(
+    top_level_nodes: list[Node],
+    visible: list[tuple[str, str, str]],
+    node_by_id: dict[str, Node],
+    cfg: LayoutConfig,
+) -> None:
+    """
+    Create extra vertical space below crowded same-row relations.
+
+    If a long horizontal relation is blocked by intermediate elements, we open a
+    transit corridor by shifting all lower rows down. This gives the router a
+    real empty band instead of forcing a tight bypass.
+    """
+    cuts: list[int] = []
+
+    for _, src_nid, tgt_nid in visible:
+        src = node_by_id.get(src_nid)
+        tgt = node_by_id.get(tgt_nid)
+        if src is None or tgt is None:
+            continue
+
+        src_cy = _cy(src)
+        tgt_cy = _cy(tgt)
+        if abs(src_cy - tgt_cy) > max(src.h, tgt.h) // 2:
+            continue
+
+        y = (src_cy + tgt_cy) // 2
+        blockers = _horizontal_blockers(
+            _cx(src),
+            _cx(tgt),
+            y,
+            top_level_nodes,
+            frozenset({src.id, tgt.id}),
+            cfg.route_padding,
+        )
+        if blockers:
+            cuts.append(max(_bottom(src), _bottom(tgt)))
+
+    if not cuts:
+        return
+
+    extra_gap = cfg.node_h + cfg.row_v_gap
+    accumulated_shift = 0
+    for cut in sorted(set(cuts)):
+        threshold = cut + accumulated_shift
+        for node in top_level_nodes:
+            if node.y >= threshold:
+                node.y += extra_gap
+        accumulated_shift += extra_gap
+
+
 # ---------------------------------------------------------------------------
 # Routing
 # ---------------------------------------------------------------------------
@@ -222,6 +291,9 @@ def _route_between_ports(
         v_reservations: list[tuple[tuple[int, int], int, int, int]],
     ) -> list[BendPoint] | None:
         candidate = _normalize(points)
+        if len(candidate) <= 2 and len(points) >= 4:
+            # Keep explicit escape/entry anchors even when the route is perfectly straight.
+            candidate = _dedupe_points(points)
         if not _path_is_clear(
             candidate,
             obstacles,
@@ -248,6 +320,30 @@ def _route_between_ports(
         for band, x, y1, y2 in v_reservations:
             commit_v_lane(x, y1, y2, band)
         return _to_bendpoints(candidate)
+
+    if not src_vertical and p0[1] == p3[1]:
+        blockers = _horizontal_blockers(
+            p0[0],
+            p3[0],
+            p0[1],
+            obstacles,
+            skip,
+            cfg.route_padding,
+        )
+        if blockers:
+            top_bound = min(node.y - cfg.route_padding for node in blockers)
+            bottom_bound = max(node.y + node.h + cfg.route_padding for node in blockers)
+            for step_idx in range(8):
+                offset = cfg.lane_base + step_idx * cfg.lane_step
+                for lane_y in (top_bound - offset, bottom_bound + offset):
+                    h_band = (lane_y - cfg.lane_step, lane_y + cfg.lane_step)
+                    routed = try_path(
+                        [(sx, sy), p0, (p0[0], lane_y), (p3[0], lane_y), p3, (tx, ty)],
+                        [(h_band, lane_y, p0[0], p3[0])],
+                        [],
+                    )
+                    if routed is not None:
+                        return routed
 
     if src_vertical:
         band = _band_h(p0[1], p3[1], cfg)
@@ -300,9 +396,15 @@ def _route_between_ports(
         if _path_is_clear(candidate, obstacles, src_port.node_id, tgt_port.node_id, cfg.route_padding):
             return _to_bendpoints(candidate)
 
-    straight = _normalize([(sx, sy), (tx, ty)])
-    if _path_is_clear(straight, obstacles, src_port.node_id, tgt_port.node_id, cfg.route_padding):
-        return _to_bendpoints(straight)
+    escaped_straight = _normalize([(sx, sy), p0, p3, (tx, ty)])
+    if _path_is_clear(
+        escaped_straight,
+        obstacles,
+        src_port.node_id,
+        tgt_port.node_id,
+        cfg.route_padding,
+    ):
+        return _to_bendpoints(escaped_straight)
 
     for i in range(12):
         for dy in [-(cfg.lane_base + i * cfg.lane_step), (cfg.lane_base + i * cfg.lane_step)]:
@@ -491,6 +593,7 @@ def _build_connections_with_routing(
             visible.append((rel.id, src_nid, tgt_nid))
 
     # Assign ports — determines exit/entry points for every connection
+    _expand_horizontal_route_corridors(top_level_nodes, visible, node_by_id, cfg)
     port_map = assign_ports(node_by_id, visible)
 
     # One LaneAllocator per view — shared across all connections

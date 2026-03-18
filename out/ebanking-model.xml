@@ -262,32 +262,32 @@
         <node identifier="view_default_application_node_ac_mobile" x="780" y="1300" w="220" h="70" xsi:type="Element" elementRef="ac_mobile"/>
         <node identifier="view_default_application_node_ac_api_gateway" x="780" y="1560" w="220" h="70" xsi:type="Element" elementRef="ac_api_gateway"/>
         <node identifier="view_default_application_node_ac_auth" x="440" y="1560" w="220" h="70" xsi:type="Element" elementRef="ac_auth"/>
-        <node identifier="view_default_application_node_ac_accounts" x="780" y="1950" w="220" h="70" xsi:type="Element" elementRef="ac_accounts"/>
+        <node identifier="view_default_application_node_ac_accounts" x="780" y="2080" w="220" h="70" xsi:type="Element" elementRef="ac_accounts"/>
         <node identifier="view_default_application_node_ac_payments" x="1800" y="1430" w="220" h="70" xsi:type="Element" elementRef="ac_payments"/>
         <node identifier="view_default_application_node_ac_loans" x="1120" y="1300" w="220" h="70" xsi:type="Element" elementRef="ac_loans"/>
         <node identifier="view_default_application_node_ac_notifications" x="440" y="1170" w="220" h="70" xsi:type="Element" elementRef="ac_notifications"/>
-        <node identifier="view_default_application_node_ac_audit" x="1800" y="1690" w="220" h="70" xsi:type="Element" elementRef="ac_audit"/>
+        <node identifier="view_default_application_node_ac_audit" x="1800" y="1820" w="220" h="70" xsi:type="Element" elementRef="ac_audit"/>
         <node identifier="view_default_application_node_as_auth" x="100" y="1560" w="220" h="70" xsi:type="Element" elementRef="as_auth"/>
-        <node identifier="view_default_application_node_as_accounts" x="440" y="1950" w="220" h="70" xsi:type="Element" elementRef="as_accounts"/>
+        <node identifier="view_default_application_node_as_accounts" x="440" y="2080" w="220" h="70" xsi:type="Element" elementRef="as_accounts"/>
         <node identifier="view_default_application_node_as_payments" x="1460" y="1560" w="220" h="70" xsi:type="Element" elementRef="as_payments"/>
         <node identifier="view_default_application_node_as_loans" x="1120" y="1430" w="220" h="70" xsi:type="Element" elementRef="as_loans"/>
         <node identifier="view_default_application_node_as_notifications" x="780" y="1170" w="220" h="70" xsi:type="Element" elementRef="as_notifications"/>
-        <node identifier="view_default_application_node_do_customer" x="440" y="1690" w="220" h="70" xsi:type="Element" elementRef="do_customer"/>
-        <node identifier="view_default_application_node_do_account" x="780" y="1820" w="220" h="70" xsi:type="Element" elementRef="do_account"/>
+        <node identifier="view_default_application_node_do_customer" x="440" y="1820" w="220" h="70" xsi:type="Element" elementRef="do_customer"/>
+        <node identifier="view_default_application_node_do_account" x="780" y="1950" w="220" h="70" xsi:type="Element" elementRef="do_account"/>
         <node identifier="view_default_application_node_do_transaction" x="1460" y="1430" w="220" h="70" xsi:type="Element" elementRef="do_transaction"/>
         <node identifier="view_default_application_node_do_loan" x="1460" y="1300" w="220" h="70" xsi:type="Element" elementRef="do_loan"/>
-        <node identifier="view_default_application_node_do_audit_log" x="2140" y="1690" w="220" h="70" xsi:type="Element" elementRef="do_audit_log"/>
-        <node identifier="view_default_application_node_dev_lb" x="440" y="2390" w="220" h="70" xsi:type="Element" elementRef="dev_lb"/>
-        <node identifier="view_default_application_node_dev_app1" x="440" y="2260" w="220" h="70" xsi:type="Element" elementRef="dev_app1"/>
-        <node identifier="view_default_application_node_dev_app2" x="100" y="2390" w="220" h="70" xsi:type="Element" elementRef="dev_app2"/>
-        <node identifier="view_default_application_node_dev_db_primary" x="440" y="3170" w="220" h="70" xsi:type="Element" elementRef="dev_db_primary"/>
-        <node identifier="view_default_application_node_dev_db_replica" x="440" y="3040" w="220" h="70" xsi:type="Element" elementRef="dev_db_replica"/>
-        <node identifier="view_default_application_node_nd_k8s" x="100" y="2520" w="220" h="70" xsi:type="Element" elementRef="nd_k8s"/>
-        <node identifier="view_default_application_node_nd_kafka" x="440" y="3560" w="220" h="70" xsi:type="Element" elementRef="nd_kafka"/>
-        <node identifier="view_default_application_node_ss_postgres" x="100" y="3170" w="220" h="70" xsi:type="Element" elementRef="ss_postgres"/>
-        <node identifier="view_default_application_node_ss_redis" x="100" y="2650" w="220" h="70" xsi:type="Element" elementRef="ss_redis"/>
-        <node identifier="view_default_application_node_ss_nginx" x="1120" y="2260" w="220" h="70" xsi:type="Element" elementRef="ss_nginx"/>
-        <node identifier="view_default_application_node_ss_vault" x="100" y="3560" w="220" h="70" xsi:type="Element" elementRef="ss_vault"/>
+        <node identifier="view_default_application_node_do_audit_log" x="2140" y="1820" w="220" h="70" xsi:type="Element" elementRef="do_audit_log"/>
+        <node identifier="view_default_application_node_dev_lb" x="440" y="2520" w="220" h="70" xsi:type="Element" elementRef="dev_lb"/>
+        <node identifier="view_default_application_node_dev_app1" x="440" y="2390" w="220" h="70" xsi:type="Element" elementRef="dev_app1"/>
+        <node identifier="view_default_application_node_dev_app2" x="100" y="2520" w="220" h="70" xsi:type="Element" elementRef="dev_app2"/>
+        <node identifier="view_default_application_node_dev_db_primary" x="440" y="3300" w="220" h="70" xsi:type="Element" elementRef="dev_db_primary"/>
+        <node identifier="view_default_application_node_dev_db_replica" x="440" y="3170" w="220" h="70" xsi:type="Element" elementRef="dev_db_replica"/>
+        <node identifier="view_default_application_node_nd_k8s" x="100" y="2650" w="220" h="70" xsi:type="Element" elementRef="nd_k8s"/>
+        <node identifier="view_default_application_node_nd_kafka" x="440" y="3690" w="220" h="70" xsi:type="Element" elementRef="nd_kafka"/>
+        <node identifier="view_default_application_node_ss_postgres" x="100" y="3300" w="220" h="70" xsi:type="Element" elementRef="ss_postgres"/>
+        <node identifier="view_default_application_node_ss_redis" x="100" y="2780" w="220" h="70" xsi:type="Element" elementRef="ss_redis"/>
+        <node identifier="view_default_application_node_ss_nginx" x="1120" y="2390" w="220" h="70" xsi:type="Element" elementRef="ss_nginx"/>
+        <node identifier="view_default_application_node_ss_vault" x="100" y="3690" w="220" h="70" xsi:type="Element" elementRef="ss_vault"/>
         <connection identifier="view_default_application_conn_r01" relationshipRef="r01" source="view_default_application_node_ba_customer" target="view_default_application_node_bp_login" xsi:type="Relationship"/>
         <connection identifier="view_default_application_conn_r02" relationshipRef="r02" source="view_default_application_node_ba_customer" target="view_default_application_node_bp_transfer" xsi:type="Relationship"/>
         <connection identifier="view_default_application_conn_r03" relationshipRef="r03" source="view_default_application_node_ba_customer" target="view_default_application_node_bp_statement" xsi:type="Relationship"/>
@@ -306,30 +306,30 @@
         <connection identifier="view_default_application_conn_r10" relationshipRef="r10" source="view_default_application_node_ac_loans" target="view_default_application_node_as_loans" xsi:type="Relationship"/>
         <connection identifier="view_default_application_conn_r11" relationshipRef="r11" source="view_default_application_node_ac_notifications" target="view_default_application_node_as_notifications" xsi:type="Relationship"/>
         <connection identifier="view_default_application_conn_r12" relationshipRef="r12" source="view_default_application_node_as_auth" target="view_default_application_node_ac_web" xsi:type="Relationship">
-          <bendpoint x="336" y="1606"/>
-          <bendpoint x="336" y="1583"/>
+          <bendpoint x="336" y="1678"/>
+          <bendpoint x="1104" y="1678"/>
         </connection>
         <connection identifier="view_default_application_conn_r13" relationshipRef="r13" source="view_default_application_node_as_auth" target="view_default_application_node_ac_mobile" xsi:type="Relationship">
           <bendpoint x="210" y="1465"/>
           <bendpoint x="853" y="1465"/>
         </connection>
         <connection identifier="view_default_application_conn_r14" relationshipRef="r14" source="view_default_application_node_as_accounts" target="view_default_application_node_ac_web" xsi:type="Relationship">
-          <bendpoint x="550" y="2066"/>
-          <bendpoint x="1230" y="2066"/>
+          <bendpoint x="550" y="2203"/>
+          <bendpoint x="1230" y="2203"/>
         </connection>
         <connection identifier="view_default_application_conn_r15" relationshipRef="r15" source="view_default_application_node_as_payments" target="view_default_application_node_ac_web" xsi:type="Relationship"/>
         <connection identifier="view_default_application_conn_r16" relationshipRef="r16" source="view_default_application_node_as_loans" target="view_default_application_node_ac_web" xsi:type="Relationship"/>
         <connection identifier="view_default_application_conn_r17" relationshipRef="r17" source="view_default_application_node_as_notifications" target="view_default_application_node_ac_mobile" xsi:type="Relationship"/>
         <connection identifier="view_default_application_conn_r18" relationshipRef="r18" source="view_default_application_node_ac_accounts" target="view_default_application_node_do_account" xsi:type="Relationship">
-          <bendpoint x="926" y="1906"/>
-          <bendpoint x="890" y="1906"/>
+          <bendpoint x="926" y="2036"/>
+          <bendpoint x="890" y="2036"/>
         </connection>
         <connection identifier="view_default_application_conn_r19" relationshipRef="r19" source="view_default_application_node_ac_payments" target="view_default_application_node_do_transaction" xsi:type="Relationship"/>
         <connection identifier="view_default_application_conn_r20" relationshipRef="r20" source="view_default_application_node_ac_loans" target="view_default_application_node_do_loan" xsi:type="Relationship"/>
         <connection identifier="view_default_application_conn_r21" relationshipRef="r21" source="view_default_application_node_ac_audit" target="view_default_application_node_do_audit_log" xsi:type="Relationship"/>
         <connection identifier="view_default_application_conn_r22" relationshipRef="r22" source="view_default_application_node_ac_auth" target="view_default_application_node_do_customer" xsi:type="Relationship">
-          <bendpoint x="586" y="1674"/>
-          <bendpoint x="550" y="1674"/>
+          <bendpoint x="586" y="1725"/>
+          <bendpoint x="550" y="1725"/>
         </connection>
         <connection identifier="view_default_application_conn_r23" relationshipRef="r23" source="view_default_application_node_ac_web" target="view_default_application_node_ac_api_gateway" xsi:type="Relationship">
           <bendpoint x="1104" y="1606"/>
@@ -342,57 +342,57 @@
         <connection identifier="view_default_application_conn_r25" relationshipRef="r25" source="view_default_application_node_ac_api_gateway" target="view_default_application_node_ac_auth" xsi:type="Relationship"/>
         <connection identifier="view_default_application_conn_r26" relationshipRef="r26" source="view_default_application_node_ac_api_gateway" target="view_default_application_node_ac_accounts" xsi:type="Relationship">
           <bendpoint x="722" y="1646"/>
-          <bendpoint x="722" y="1934"/>
+          <bendpoint x="722" y="2064"/>
         </connection>
         <connection identifier="view_default_application_conn_r27" relationshipRef="r27" source="view_default_application_node_ac_api_gateway" target="view_default_application_node_ac_payments" xsi:type="Relationship">
-          <bendpoint x="926" y="1516"/>
-          <bendpoint x="1888" y="1516"/>
+          <bendpoint x="926" y="1688"/>
+          <bendpoint x="1888" y="1688"/>
         </connection>
         <connection identifier="view_default_application_conn_r28" relationshipRef="r28" source="view_default_application_node_ac_payments" target="view_default_application_node_ac_notifications" xsi:type="Relationship">
           <bendpoint x="1910" y="1131"/>
           <bendpoint x="586" y="1131"/>
         </connection>
         <connection identifier="view_default_application_conn_r29" relationshipRef="r29" source="view_default_application_node_ac_payments" target="view_default_application_node_ac_audit" xsi:type="Relationship">
-          <bendpoint x="1976" y="1595"/>
-          <bendpoint x="1910" y="1595"/>
+          <bendpoint x="1976" y="1660"/>
+          <bendpoint x="1910" y="1660"/>
         </connection>
         <connection identifier="view_default_application_conn_r30" relationshipRef="r30" source="view_default_application_node_dev_lb" target="view_default_application_node_dev_app1" xsi:type="Relationship">
-          <bendpoint x="550" y="2346"/>
-          <bendpoint x="586" y="2346"/>
+          <bendpoint x="550" y="2476"/>
+          <bendpoint x="586" y="2476"/>
         </connection>
         <connection identifier="view_default_application_conn_r31" relationshipRef="r31" source="view_default_application_node_dev_lb" target="view_default_application_node_dev_app2" xsi:type="Relationship"/>
         <connection identifier="view_default_application_conn_r32" relationshipRef="r32" source="view_default_application_node_dev_db_primary" target="view_default_application_node_dev_db_replica" xsi:type="Relationship"/>
         <connection identifier="view_default_application_conn_r33" relationshipRef="r33" source="view_default_application_node_dev_app1" target="view_default_application_node_nd_k8s" xsi:type="Relationship">
-          <bendpoint x="513" y="2346"/>
-          <bendpoint x="365" y="2346"/>
-          <bendpoint x="365" y="2509"/>
-          <bendpoint x="194" y="2509"/>
+          <bendpoint x="513" y="2476"/>
+          <bendpoint x="365" y="2476"/>
+          <bendpoint x="365" y="2639"/>
+          <bendpoint x="194" y="2639"/>
         </connection>
         <connection identifier="view_default_application_conn_r34" relationshipRef="r34" source="view_default_application_node_dev_app2" target="view_default_application_node_nd_k8s" xsi:type="Relationship">
-          <bendpoint x="210" y="2504"/>
-          <bendpoint x="131" y="2504"/>
+          <bendpoint x="210" y="2634"/>
+          <bendpoint x="131" y="2634"/>
         </connection>
         <connection identifier="view_default_application_conn_r35" relationshipRef="r35" source="view_default_application_node_dev_db_primary" target="view_default_application_node_ss_postgres" xsi:type="Relationship"/>
         <connection identifier="view_default_application_conn_r36" relationshipRef="r36" source="view_default_application_node_nd_k8s" target="view_default_application_node_ss_redis" xsi:type="Relationship"/>
         <connection identifier="view_default_application_conn_r37" relationshipRef="r37" source="view_default_application_node_nd_k8s" target="view_default_application_node_ss_nginx" xsi:type="Relationship">
-          <bendpoint x="257" y="2533"/>
-          <bendpoint x="1230" y="2533"/>
+          <bendpoint x="257" y="2663"/>
+          <bendpoint x="1230" y="2663"/>
         </connection>
         <connection identifier="view_default_application_conn_r38" relationshipRef="r38" source="view_default_application_node_nd_kafka" target="view_default_application_node_ss_vault" xsi:type="Relationship"/>
         <connection identifier="view_default_application_conn_r39" relationshipRef="r39" source="view_default_application_node_nd_k8s" target="view_default_application_node_ac_auth" xsi:type="Relationship">
-          <bendpoint x="378" y="2504"/>
+          <bendpoint x="378" y="2634"/>
           <bendpoint x="378" y="1646"/>
         </connection>
         <connection identifier="view_default_application_conn_r40" relationshipRef="r40" source="view_default_application_node_nd_k8s" target="view_default_application_node_ac_accounts" xsi:type="Relationship">
-          <bendpoint x="225" y="2498"/>
-          <bendpoint x="890" y="2498"/>
+          <bendpoint x="225" y="2628"/>
+          <bendpoint x="890" y="2628"/>
         </connection>
         <connection identifier="view_default_application_conn_r41" relationshipRef="r41" source="view_default_application_node_nd_k8s" target="view_default_application_node_ac_payments" xsi:type="Relationship">
           <bendpoint x="288" y="1516"/>
           <bendpoint x="1844" y="1516"/>
         </connection>
         <connection identifier="view_default_application_conn_r42" relationshipRef="r42" source="view_default_application_node_nd_kafka" target="view_default_application_node_ac_notifications" xsi:type="Relationship">
-          <bendpoint x="382" y="3544"/>
+          <bendpoint x="382" y="3674"/>
           <bendpoint x="382" y="1256"/>
         </connection>
       </view>
@@ -402,21 +402,21 @@
         <node identifier="view_application_cooperation_node_ac_mobile" x="780" y="210" w="220" h="70" xsi:type="Element" elementRef="ac_mobile"/>
         <node identifier="view_application_cooperation_node_ac_api_gateway" x="780" y="470" w="220" h="70" xsi:type="Element" elementRef="ac_api_gateway"/>
         <node identifier="view_application_cooperation_node_ac_auth" x="440" y="470" w="220" h="70" xsi:type="Element" elementRef="ac_auth"/>
-        <node identifier="view_application_cooperation_node_ac_accounts" x="780" y="860" w="220" h="70" xsi:type="Element" elementRef="ac_accounts"/>
+        <node identifier="view_application_cooperation_node_ac_accounts" x="780" y="990" w="220" h="70" xsi:type="Element" elementRef="ac_accounts"/>
         <node identifier="view_application_cooperation_node_ac_payments" x="1800" y="340" w="220" h="70" xsi:type="Element" elementRef="ac_payments"/>
         <node identifier="view_application_cooperation_node_ac_loans" x="1120" y="210" w="220" h="70" xsi:type="Element" elementRef="ac_loans"/>
         <node identifier="view_application_cooperation_node_ac_notifications" x="440" y="80" w="220" h="70" xsi:type="Element" elementRef="ac_notifications"/>
-        <node identifier="view_application_cooperation_node_ac_audit" x="1800" y="600" w="220" h="70" xsi:type="Element" elementRef="ac_audit"/>
+        <node identifier="view_application_cooperation_node_ac_audit" x="1800" y="730" w="220" h="70" xsi:type="Element" elementRef="ac_audit"/>
         <node identifier="view_application_cooperation_node_as_auth" x="100" y="470" w="220" h="70" xsi:type="Element" elementRef="as_auth"/>
-        <node identifier="view_application_cooperation_node_as_accounts" x="440" y="860" w="220" h="70" xsi:type="Element" elementRef="as_accounts"/>
+        <node identifier="view_application_cooperation_node_as_accounts" x="440" y="990" w="220" h="70" xsi:type="Element" elementRef="as_accounts"/>
         <node identifier="view_application_cooperation_node_as_payments" x="1460" y="470" w="220" h="70" xsi:type="Element" elementRef="as_payments"/>
         <node identifier="view_application_cooperation_node_as_loans" x="1120" y="340" w="220" h="70" xsi:type="Element" elementRef="as_loans"/>
         <node identifier="view_application_cooperation_node_as_notifications" x="780" y="80" w="220" h="70" xsi:type="Element" elementRef="as_notifications"/>
-        <node identifier="view_application_cooperation_node_do_customer" x="440" y="600" w="220" h="70" xsi:type="Element" elementRef="do_customer"/>
-        <node identifier="view_application_cooperation_node_do_account" x="780" y="730" w="220" h="70" xsi:type="Element" elementRef="do_account"/>
+        <node identifier="view_application_cooperation_node_do_customer" x="440" y="730" w="220" h="70" xsi:type="Element" elementRef="do_customer"/>
+        <node identifier="view_application_cooperation_node_do_account" x="780" y="860" w="220" h="70" xsi:type="Element" elementRef="do_account"/>
         <node identifier="view_application_cooperation_node_do_transaction" x="1460" y="340" w="220" h="70" xsi:type="Element" elementRef="do_transaction"/>
         <node identifier="view_application_cooperation_node_do_loan" x="1460" y="210" w="220" h="70" xsi:type="Element" elementRef="do_loan"/>
-        <node identifier="view_application_cooperation_node_do_audit_log" x="2140" y="600" w="220" h="70" xsi:type="Element" elementRef="do_audit_log"/>
+        <node identifier="view_application_cooperation_node_do_audit_log" x="2140" y="730" w="220" h="70" xsi:type="Element" elementRef="do_audit_log"/>
         <connection identifier="view_application_cooperation_conn_r07" relationshipRef="r07" source="view_application_cooperation_node_ac_auth" target="view_application_cooperation_node_as_auth" xsi:type="Relationship">
           <bendpoint x="424" y="505"/>
           <bendpoint x="424" y="493"/>
@@ -429,28 +429,32 @@
         <connection identifier="view_application_cooperation_conn_r10" relationshipRef="r10" source="view_application_cooperation_node_ac_loans" target="view_application_cooperation_node_as_loans" xsi:type="Relationship"/>
         <connection identifier="view_application_cooperation_conn_r11" relationshipRef="r11" source="view_application_cooperation_node_ac_notifications" target="view_application_cooperation_node_as_notifications" xsi:type="Relationship"/>
         <connection identifier="view_application_cooperation_conn_r12" relationshipRef="r12" source="view_application_cooperation_node_as_auth" target="view_application_cooperation_node_ac_web" xsi:type="Relationship">
-          <bendpoint x="336" y="516"/>
-          <bendpoint x="336" y="493"/>
+          <bendpoint x="336" y="588"/>
+          <bendpoint x="1104" y="588"/>
         </connection>
         <connection identifier="view_application_cooperation_conn_r13" relationshipRef="r13" source="view_application_cooperation_node_as_auth" target="view_application_cooperation_node_ac_mobile" xsi:type="Relationship">
           <bendpoint x="210" y="375"/>
           <bendpoint x="853" y="375"/>
         </connection>
         <connection identifier="view_application_cooperation_conn_r14" relationshipRef="r14" source="view_application_cooperation_node_as_accounts" target="view_application_cooperation_node_ac_web" xsi:type="Relationship">
-          <bendpoint x="550" y="976"/>
-          <bendpoint x="1230" y="976"/>
+          <bendpoint x="550" y="1113"/>
+          <bendpoint x="1230" y="1113"/>
         </connection>
         <connection identifier="view_application_cooperation_conn_r15" relationshipRef="r15" source="view_application_cooperation_node_as_payments" target="view_application_cooperation_node_ac_web" xsi:type="Relationship"/>
         <connection identifier="view_application_cooperation_conn_r16" relationshipRef="r16" source="view_application_cooperation_node_as_loans" target="view_application_cooperation_node_ac_web" xsi:type="Relationship"/>
         <connection identifier="view_application_cooperation_conn_r17" relationshipRef="r17" source="view_application_cooperation_node_as_notifications" target="view_application_cooperation_node_ac_mobile" xsi:type="Relationship"/>
         <connection identifier="view_application_cooperation_conn_r18" relationshipRef="r18" source="view_application_cooperation_node_ac_accounts" target="view_application_cooperation_node_do_account" xsi:type="Relationship">
-          <bendpoint x="926" y="816"/>
-          <bendpoint x="890" y="816"/>
+          <bendpoint x="926" y="946"/>
+          <bendpoint x="890" y="946"/>
         </connection>
         <connection identifier="view_application_cooperation_conn_r19" relationshipRef="r19" source="view_application_cooperation_node_ac_payments" target="view_application_cooperation_node_do_transaction" xsi:type="Relationship"/>
         <connection identifier="view_application_cooperation_conn_r20" relationshipRef="r20" source="view_application_cooperation_node_ac_loans" target="view_application_cooperation_node_do_loan" xsi:type="Relationship"/>
         <connection identifier="view_application_cooperation_conn_r21" relationshipRef="r21" source="view_application_cooperation_node_ac_audit" target="view_application_cooperation_node_do_audit_log" xsi:type="Relationship"/>
-        <connection identifier="view_application_cooperation_conn_r22" relationshipRef="r22" source="view_application_cooperation_node_ac_auth" target="view_application_cooperation_node_do_customer" xsi:type="Relationship"/>
+        <connection identifier="view_application_cooperation_conn_r22" relationshipRef="r22" source="view_application_cooperation_node_ac_auth" target="view_application_cooperation_node_do_customer" xsi:type="Relationship">
+          <bendpoint x="550" y="556"/>
+          <bendpoint x="550" y="635"/>
+          <bendpoint x="550" y="714"/>
+        </connection>
         <connection identifier="view_application_cooperation_conn_r23" relationshipRef="r23" source="view_application_cooperation_node_ac_web" target="view_application_cooperation_node_ac_api_gateway" xsi:type="Relationship">
           <bendpoint x="1104" y="516"/>
           <bendpoint x="1104" y="505"/>
@@ -462,19 +466,19 @@
         <connection identifier="view_application_cooperation_conn_r25" relationshipRef="r25" source="view_application_cooperation_node_ac_api_gateway" target="view_application_cooperation_node_ac_auth" xsi:type="Relationship"/>
         <connection identifier="view_application_cooperation_conn_r26" relationshipRef="r26" source="view_application_cooperation_node_ac_api_gateway" target="view_application_cooperation_node_ac_accounts" xsi:type="Relationship">
           <bendpoint x="722" y="556"/>
-          <bendpoint x="722" y="844"/>
+          <bendpoint x="722" y="974"/>
         </connection>
         <connection identifier="view_application_cooperation_conn_r27" relationshipRef="r27" source="view_application_cooperation_node_ac_api_gateway" target="view_application_cooperation_node_ac_payments" xsi:type="Relationship">
-          <bendpoint x="926" y="426"/>
-          <bendpoint x="1855" y="426"/>
+          <bendpoint x="926" y="598"/>
+          <bendpoint x="1855" y="598"/>
         </connection>
         <connection identifier="view_application_cooperation_conn_r28" relationshipRef="r28" source="view_application_cooperation_node_ac_payments" target="view_application_cooperation_node_ac_notifications" xsi:type="Relationship">
           <bendpoint x="1910" y="41"/>
           <bendpoint x="550" y="41"/>
         </connection>
         <connection identifier="view_application_cooperation_conn_r29" relationshipRef="r29" source="view_application_cooperation_node_ac_payments" target="view_application_cooperation_node_ac_audit" xsi:type="Relationship">
-          <bendpoint x="1965" y="505"/>
-          <bendpoint x="1910" y="505"/>
+          <bendpoint x="1965" y="570"/>
+          <bendpoint x="1910" y="570"/>
         </connection>
       </view>
       <view identifier="view_technology" xsi:type="Diagram">
