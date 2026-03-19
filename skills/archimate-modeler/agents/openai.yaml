@@ -1,0 +1,4 @@
+interface:
+  display_name: "ArchiMate Modeler"
+  short_description: "Build and repair ArchiMate models"
+  default_prompt: "Use $archimate-modeler to turn this architecture description into a validated ArchiMate model with views and export-ready output."

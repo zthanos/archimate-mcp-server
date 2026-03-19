@@ -1,226 +1,154 @@
 ---
-name: archimate-diagrams
-description: Create, update, validate, repair, generate views, and export ArchiMate models from plain text, code, or structured input.
+name: archimate-modeler
+description: Create, extend, validate, repair, view, and export ArchiMate 3.1 models from plain-language architecture descriptions, code summaries, or existing model JSON. Use when the task is to turn system or business architecture into a valid ArchiMate model, revise an existing model with natural-language changes, diagnose invalid relationships or weak structure, generate importable views/XML, or derive architecture facts from code for modeling.
 ---
 
-# ArchiMate Diagram Skill
+# ArchiMate Modeler
 
-This skill enables the agent to create, update, validate, repair, generate views for, and export ArchiMate models.
+Build a valid ArchiMate model first, then improve presentation and export.
 
-It supports:
-- plain text → ArchiMate model
-- iterative corrections using natural language
-- validation and repair of models
-- generation of ArchiMate views
-- export to Open Exchange Format (Archi-compatible XML)
+Use the MCP tools in a validation-first loop:
 
----
+1. Extract or load facts
+2. Validate the model or facts
+3. Repair obvious issues
+4. Generate views when the structure is stable
+5. Export XML only after validation succeeds
 
-# When to Use This Skill
+Treat the workflow as:
 
-Use this skill when the user wants to:
+`source input -> facts/model -> validate -> repair if needed -> generate views -> export`
 
-- create an ArchiMate model or diagram
-- update or correct an existing model
-- validate or fix ArchiMate relationships or elements
-- generate views for visualization
-- export a model for use in Archi or other EA tools
+## Choose The Right Entry Point
 
-Do NOT use this skill for:
-- general ArchiMate theory questions
-- comparisons (e.g. ArchiMate vs C4)
-- documentation without modeling intent
+For plain-text architecture descriptions, call `extract_archimate_facts_from_text`.
 
----
+For source-code-derived descriptions, service inventories, README architecture summaries, or dependency summaries, call `extract_archimate_facts_from_code_summary`.
 
-# Supported Inputs
+For an existing canonical model JSON payload, start with `validate_archimate_model` if it already includes `model`, `elements`, and `relationships`. Start with `validate_archimate_facts` if the payload only contains `elements` and `relationships`.
 
-The user may provide:
+For a quick scaffold or demo, call `generate_archimate_sample_model`.
 
-1. Plain text description
-   Example:
-   "Customer uses a portal that calls a payment service"
+## Operate In Update Mode By Default
 
-2. Code (COBOL, Java, Python, etc.)
-   → extract architecture elements and flows
+If the conversation already contains a model, prefer updating it instead of regenerating from scratch.
 
-3. Existing ArchiMate JSON model
+Pass the current model through `existing_model_json` when using extraction tools so newly extracted facts merge into the working model.
 
-4. Natural language corrections on an existing model
+For user requests like:
 
----
+- "add a database"
+- "replace Kubernetes with a VM"
+- "fix the invalid relationships"
+- "connect the portal to the customer record"
 
-# Core Workflow
+apply the smallest safe change to the existing model, then validate again.
 
-Always follow this pipeline:
+Ask for clarification only when the instruction is genuinely ambiguous and multiple plausible model changes would materially differ.
 
-1. Extract or load model
-2. Validate model
-3. Repair or improve if needed
+## Use These MCP Tools
+
+### Extraction
+
+- `extract_archimate_facts_from_text`
+- `extract_archimate_facts_from_code_summary`
+
+### Validation
+
+- `validate_archimate_facts`
+- `validate_archimate_model`
+
+### Repair And Review
+
+- `normalize_relationship_types`
+- `suggest_missing_relationships`
+- `detect_architecture_smells`
+
+### View Generation
+
+- `generate_archimate_views`
+
+### Export
+
+- `generate_archimate_exchange_xml`
+- `generate_archimate_exchange_file`
+
+## Follow These Rules
+
+- Validate before generating exports intended for handoff or import.
+- Never claim a model is valid unless validation returned success.
+- Prefer specific ArchiMate relationship types over `Association` when the semantics are clear.
+- Keep IDs stable when iterating on an existing model.
+- Do not invent elements, layers, or relationships that are not supported by the input or by ArchiMate rules.
+- Do not expose raw JSON unless the user asks for it or the workflow requires it.
+- Explain the meaningful modeling decisions when you change an existing model.
+
+## Handle Validation Failures
+
+If validation fails, do not proceed straight to export.
+
+Instead:
+
+1. Summarize the issue in plain language
+2. Propose or apply the smallest valid fix
+3. Re-run validation
+4. Only continue to views/export after the model is valid
+
+Use `normalize_relationship_types` when the issue looks like the wrong relationship kind.
+
+Use `suggest_missing_relationships` when the model is structurally thin but not obviously invalid.
+
+Use `detect_architecture_smells` when the model is valid but weak, incomplete, or suspicious.
+
+## Read References Only When Needed
+
+Read [references/archimate-rules.md](references/archimate-rules.md) when you need allowed element types, relationship types, or common correction patterns.
+
+Read [references/example-models.md](references/example-models.md) when you need a modeling pattern, naming convention, or a concrete structural example to imitate.
+
+## Preferred Working Patterns
+
+### Create From Text
+
+1. Extract facts from the text
+2. Validate the extracted facts
+3. If needed, repair relationships or structure
 4. Generate views
-5. Export (only if requested)
+5. Export only if requested
 
-Mental model:
+### Create From Code Summary
 
-text → facts → validate → (fix) → views → export
+1. Extract facts from the code summary
+2. Validate the extracted facts
+3. Review for missing services, data objects, or runtime/deployment nodes
+4. Generate views
+5. Export only if requested
 
----
+### Update Existing Model
 
-# Mandatory Rules
+1. Start from the current model JSON
+2. Merge or edit only the requested changes
+3. Validate the updated model
+4. Regenerate views if the structure changed
+5. Export only if requested
 
-- ALWAYS validate before export
-- NEVER export invalid models
-- DO NOT generate views before validation
-- DO NOT hallucinate ArchiMate types or relationships
-- USE only valid ArchiMate element and relationship types
+### Repair Existing Model
 
-Reference:
-- archimate-rules.md
-- example-models.md
+1. Validate the current model or facts
+2. Normalize relationship types if needed
+3. Check for missing relationships or smells if the model is still weak
+4. Validate again
+5. Generate views or export after the model stabilizes
 
----
+## Output Style
 
-# Model Update Mode (CRITICAL)
+Keep responses concise and structured.
 
-If a model already exists in the current session context,
-treat user instructions as updates instead of full regeneration.
+When modifying a model, state:
 
-The user can provide plain text corrections such as:
+- what changed
+- why it changed
+- whether the model validated
+- whether views or export were generated
 
-- "Change Account to ApplicationService"
-- "Add a database"
-- "Remove Kubernetes and use a VM"
-- "Fix relationships"
-- "Connect portal to data object instead"
-
-## Update Flow
-
-1. Load current model from context
-2. Apply requested changes to the model
-3. Validate updated model
-4. Repair if needed
-5. Regenerate views if structure changed
-6. Export only if requested
-
----
-
-# Choosing Update Strategy
-
-Use this decision logic:
-
-| Scenario | Strategy |
-|--------|----------|
-| Small precise change | Apply deterministic update to current model JSON |
-| Structural change | Re-extract using existing model as input |
-| Unclear instruction | Ask clarification |
-
----
-
-# Available Tools
-
-## Extraction
-- extract_archimate_facts_from_text
-- extract_archimate_facts_from_code
-
-## Validation
-- validate_archimate_facts
-
-## Repair / Improvements
-- normalize_relationship_types
-- detect_architecture_smells
-- suggest_missing_relationships
-
-## View Generation
-- generate_archimate_views
-
-## Export
-- generate_archimate_exchange_file
-
----
-
-# Correct Usage Patterns
-
-## Pattern 1 — Create from text
-
-User:
-"Customer uses a portal that calls a payment service"
-
-Flow:
-1. extract_archimate_facts_from_text
-2. validate_archimate_facts
-3. generate_archimate_views
-4. generate_archimate_exchange_file (if requested)
-
----
-
-## Pattern 2 — Fix model
-
-User:
-"Fix invalid relationships"
-
-Flow:
-1. validate_archimate_facts
-2. normalize_relationship_types
-3. detect_architecture_smells
-4. validate again
-5. generate views
-6. export (optional)
-
----
-
-## Pattern 3 — Update with plain text
-
-User:
-"Add database and connect service to it"
-
-Flow:
-1. load current model
-2. apply update
-3. validate
-4. generate views
-5. export (optional)
-
----
-
-# Error Handling
-
-If validation fails:
-
-- DO NOT export
-- explain the issue clearly
-- propose a fix
-- ask for confirmation if needed
-
-Example:
-"ApplicationService cannot realize BusinessActor.
-Suggested fix: use Serving instead."
-
----
-
-# Output Behavior
-
-- Keep responses concise and structured
-- Explain changes when modifying models
-- Do not expose raw JSON unless requested
-- Always confirm before destructive changes
-
----
-
-# Goal
-
-Enable iterative, conversational modeling of ArchiMate diagrams:
-
-- start from plain text
-- refine via natural language
-- ensure correctness via validation
-- produce clean, importable diagrams
-
----
-
-# Key Principle
-
-The agent maintains the model in context.
-
-The user provides intent.
-
-The agent translates intent → valid ArchiMate model → diagram.
+If export is requested, prefer returning the file path or XML result rather than a long explanation.
