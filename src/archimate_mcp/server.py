@@ -2,16 +2,28 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import os
 
 from mcp.server.fastmcp import FastMCP
 
 from .builders import build_model_with_default_view
 from .exporter import export_archimate_exchange_xml
+from .llm import call_llm
 from .models import ArchimateModel, Element, Relationship
 from .validation import ValidationError, validate_model
 
 
-mcp = FastMCP("archimate-mcp-server")
+def _env_int(name: str, default: int) -> int:
+    raw = os.getenv(name, "").strip()
+    return int(raw) if raw else default
+
+
+mcp = FastMCP(
+    "archimate-mcp-server",
+    host=os.getenv("FASTMCP_HOST", "127.0.0.1").strip() or "127.0.0.1",
+    port=_env_int("FASTMCP_PORT", 8000),
+    streamable_http_path=os.getenv("FASTMCP_STREAMABLE_HTTP_PATH", "/mcp").strip() or "/mcp",
+)
 
 
 # ---------------------------------------------------------------------------
@@ -116,24 +128,10 @@ Focus on: components, services, data stores, runtime infrastructure, \
 and the relationships between them.\n\n{input}"""
 
 
-def _call_claude(system: str, user: str) -> str:
-    """Call the Claude API synchronously via the MCP host's model access."""
-    import anthropic  # available in the MCP runtime environment
-
-    client = anthropic.Anthropic()
-    message = client.messages.create(
-        model="claude-opus-4-5",
-        max_tokens=2048,
-        system=system,
-        messages=[{"role": "user", "content": user}],
-    )
-    return message.content[0].text
-
-
 def _extract_facts(raw_input: str, user_prompt_template: str, existing_model_json: str | None) -> dict:
     """Shared extraction logic for text and code summary inputs."""
     user_prompt = user_prompt_template.format(input=raw_input)
-    raw_json = _call_claude(_EXTRACTION_SYSTEM_PROMPT, user_prompt)
+    raw_json = call_llm(_EXTRACTION_SYSTEM_PROMPT, user_prompt)
 
     # Parse and normalise
     try:
@@ -366,7 +364,7 @@ def suggest_missing_relationships(model_json: str) -> dict:
     model = ArchimateModel.model_validate(data)
     summary = _model_summary_for_prompt(model)
 
-    raw = _call_claude(_SUGGEST_RELATIONSHIPS_SYSTEM_PROMPT, summary)
+    raw = call_llm(_SUGGEST_RELATIONSHIPS_SYSTEM_PROMPT, summary)
     try:
         result = json.loads(raw)
     except json.JSONDecodeError as exc:
@@ -392,7 +390,7 @@ def normalize_relationship_types(model_json: str) -> dict:
     model = ArchimateModel.model_validate(data)
     summary = _model_summary_for_prompt(model)
 
-    raw = _call_claude(_NORMALIZE_RELATIONSHIPS_SYSTEM_PROMPT, summary)
+    raw = call_llm(_NORMALIZE_RELATIONSHIPS_SYSTEM_PROMPT, summary)
     try:
         result = json.loads(raw)
     except json.JSONDecodeError as exc:
@@ -425,7 +423,7 @@ def detect_architecture_smells(model_json: str) -> dict:
 
     # Then run LLM-based semantic checks
     summary = _model_summary_for_prompt(model)
-    raw = _call_claude(_DETECT_SMELLS_SYSTEM_PROMPT, summary)
+    raw = call_llm(_DETECT_SMELLS_SYSTEM_PROMPT, summary)
     try:
         llm_result = json.loads(raw)
         llm_smells = llm_result.get("smells", [])
@@ -512,7 +510,9 @@ def _detect_deterministic_smells(model: ArchimateModel) -> list[dict]:
 
 def main() -> None:
     try:
-        mcp.run()
+        transport = os.getenv("ARCHIMATE_MCP_TRANSPORT", "stdio").strip().lower() or "stdio"
+        mount_path = os.getenv("ARCHIMATE_MCP_MOUNT_PATH", "").strip() or None
+        mcp.run(transport=transport, mount_path=mount_path)
     except ValidationError as exc:
         raise SystemExit(str(exc)) from exc
 

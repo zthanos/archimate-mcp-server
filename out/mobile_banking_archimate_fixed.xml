@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<model xmlns="http://www.opengroup.org/xsd/archimate/3.0/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" identifier="mobile_banking_model" xsi:schemaLocation="http://www.opengroup.org/xsd/archimate/3.0/ http://www.opengroup.org/xsd/archimate/3.0/archimate3_Model.xsd">
+  <name>Mobile Banking Architecture</name>
+  <elements>
+    <element identifier="customer" xsi:type="BusinessActor">
+      <name>Customer</name>
+    </element>
+    <element identifier="mobile_banking_app" xsi:type="ApplicationComponent">
+      <name>Mobile Banking App</name>
+    </element>
+    <element identifier="api_gateway" xsi:type="ApplicationComponent">
+      <name>API Gateway</name>
+    </element>
+    <element identifier="core_banking_system" xsi:type="ApplicationComponent">
+      <name>Core Banking System</name>
+    </element>
+    <element identifier="account_data" xsi:type="DataObject">
+      <name>Account Data</name>
+    </element>
+    <element identifier="banking_database" xsi:type="Node">
+      <name>Banking Database</name>
+    </element>
+  </elements>
+  <relationships>
+    <relationship identifier="rel_app_serves_customer" source="mobile_banking_app" target="customer" xsi:type="Serving">
+      <name>serves</name>
+    </relationship>
+    <relationship identifier="rel_app_calls_gateway" source="mobile_banking_app" target="api_gateway" xsi:type="Flow">
+      <name>calls</name>
+    </relationship>
+    <relationship identifier="rel_gateway_routes_core" source="api_gateway" target="core_banking_system" xsi:type="Flow">
+      <name>routes requests</name>
+    </relationship>
+    <relationship identifier="rel_core_reads_account_data" source="core_banking_system" target="account_data" xsi:type="Access">
+      <name>reads</name>
+    </relationship>
+    <relationship identifier="rel_database_serves_core" source="banking_database" target="core_banking_system" xsi:type="Serving">
+      <name>hosts data access</name>
+    </relationship>
+  </relationships>
+  <views>
+    <diagrams>
+      <view identifier="view_default_application" xsi:type="Diagram">
+        <name>Default Application View</name>
+        <node identifier="view_default_application_node_customer" x="100" y="80" w="220" h="70" xsi:type="Element" elementRef="customer"/>
+        <node identifier="view_default_application_node_mobile_banking_app" x="100" y="520" w="220" h="70" xsi:type="Element" elementRef="mobile_banking_app"/>
+        <node identifier="view_default_application_node_api_gateway" x="440" y="520" w="220" h="70" xsi:type="Element" elementRef="api_gateway"/>
+        <node identifier="view_default_application_node_core_banking_system" x="780" y="520" w="220" h="70" xsi:type="Element" elementRef="core_banking_system"/>
+        <node identifier="view_default_application_node_account_data" x="780" y="390" w="220" h="70" xsi:type="Element" elementRef="account_data"/>
+        <node identifier="view_default_application_node_banking_database" x="100" y="830" w="220" h="70" xsi:type="Element" elementRef="banking_database"/>
+        <connection identifier="view_default_application_conn_rel_app_serves_customer" relationshipRef="rel_app_serves_customer" source="view_default_application_node_mobile_banking_app" target="view_default_application_node_customer" xsi:type="Relationship">
+          <bendpoint x="210" y="504"/>
+          <bendpoint x="210" y="335"/>
+          <bendpoint x="210" y="166"/>
+        </connection>
+        <connection identifier="view_default_application_conn_rel_app_calls_gateway" relationshipRef="rel_app_calls_gateway" source="view_default_application_node_mobile_banking_app" target="view_default_application_node_api_gateway" xsi:type="Relationship"/>
+        <connection identifier="view_default_application_conn_rel_gateway_routes_core" relationshipRef="rel_gateway_routes_core" source="view_default_application_node_api_gateway" target="view_default_application_node_core_banking_system" xsi:type="Relationship"/>
+        <connection identifier="view_default_application_conn_rel_core_reads_account_data" relationshipRef="rel_core_reads_account_data" source="view_default_application_node_core_banking_system" target="view_default_application_node_account_data" xsi:type="Relationship"/>
+        <connection identifier="view_default_application_conn_rel_database_serves_core" relationshipRef="rel_database_serves_core" source="view_default_application_node_banking_database" target="view_default_application_node_core_banking_system" xsi:type="Relationship">
+          <bendpoint x="210" y="710"/>
+          <bendpoint x="890" y="710"/>
+        </connection>
+      </view>
+      <view identifier="view_application_cooperation" xsi:type="Diagram">
+        <name>Application Cooperation View</name>
+        <node identifier="view_application_cooperation_node_mobile_banking_app" x="100" y="210" w="220" h="70" xsi:type="Element" elementRef="mobile_banking_app"/>
+        <node identifier="view_application_cooperation_node_api_gateway" x="440" y="210" w="220" h="70" xsi:type="Element" elementRef="api_gateway"/>
+        <node identifier="view_application_cooperation_node_core_banking_system" x="780" y="210" w="220" h="70" xsi:type="Element" elementRef="core_banking_system"/>
+        <node identifier="view_application_cooperation_node_account_data" x="780" y="80" w="220" h="70" xsi:type="Element" elementRef="account_data"/>
+        <connection identifier="view_application_cooperation_conn_rel_app_calls_gateway" relationshipRef="rel_app_calls_gateway" source="view_application_cooperation_node_mobile_banking_app" target="view_application_cooperation_node_api_gateway" xsi:type="Relationship"/>
+        <connection identifier="view_application_cooperation_conn_rel_gateway_routes_core" relationshipRef="rel_gateway_routes_core" source="view_application_cooperation_node_api_gateway" target="view_application_cooperation_node_core_banking_system" xsi:type="Relationship"/>
+        <connection identifier="view_application_cooperation_conn_rel_core_reads_account_data" relationshipRef="rel_core_reads_account_data" source="view_application_cooperation_node_core_banking_system" target="view_application_cooperation_node_account_data" xsi:type="Relationship"/>
+      </view>
+      <view identifier="view_technology" xsi:type="Diagram">
+        <name>Technology View</name>
+        <node identifier="view_technology_node_banking_database" x="100" y="80" w="220" h="70" xsi:type="Element" elementRef="banking_database"/>
+      </view>
+      <view identifier="view_integration" xsi:type="Diagram">
+        <name>Integration View</name>
+        <node identifier="view_integration_node_customer" x="100" y="80" w="220" h="70" xsi:type="Element" elementRef="customer"/>
+        <node identifier="view_integration_node_mobile_banking_app" x="100" y="390" w="220" h="70" xsi:type="Element" elementRef="mobile_banking_app"/>
+        <node identifier="view_integration_node_core_banking_system" x="1120" y="390" w="220" h="70" xsi:type="Element" elementRef="core_banking_system"/>
+        <node identifier="view_integration_node_banking_database" x="100" y="700" w="220" h="70" xsi:type="Element" elementRef="banking_database"/>
+        <connection identifier="view_integration_conn_rel_app_serves_customer" relationshipRef="rel_app_serves_customer" source="view_integration_node_mobile_banking_app" target="view_integration_node_customer" xsi:type="Relationship">
+          <bendpoint x="210" y="374"/>
+          <bendpoint x="210" y="270"/>
+          <bendpoint x="210" y="166"/>
+        </connection>
+        <connection identifier="view_integration_conn_rel_database_serves_core" relationshipRef="rel_database_serves_core" source="view_integration_node_banking_database" target="view_integration_node_core_banking_system" xsi:type="Relationship">
+          <bendpoint x="210" y="580"/>
+          <bendpoint x="1230" y="580"/>
+        </connection>
+      </view>
+    </diagrams>
+  </views>
+</model>

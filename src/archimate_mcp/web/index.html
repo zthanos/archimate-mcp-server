@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ArchiMate Chat Tester</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero">
+        <p class="eyebrow">ArchiMate MCP Tester</p>
+        <h1>Chat with your skill and MCP server</h1>
+        <p class="lede">
+          This page sends your prompt to a lightweight web agent that follows the local
+          ArchiMate skill workflow and calls your MCP server over HTTP.
+        </p>
+      </section>
+
+      <section class="panel">
+        <div id="messages" class="messages"></div>
+        <form id="chat-form" class="composer">
+          <textarea
+            id="prompt"
+            rows="5"
+            placeholder='Example: Create an ArchiMate model from this plain text: "A customer uses a mobile banking app..." First list the tools you will call. Then validate and export it.'
+          ></textarea>
+          <div class="composer-row">
+            <label class="stream-toggle">
+              <input id="stream-mode" type="checkbox" checked />
+              <span>Stream response</span>
+            </label>
+            <button type="submit">Send</button>
+            <span id="status" class="status">Ready</span>
+          </div>
+        </form>
+      </section>
+
+      <section class="panel meta">
+        <div>
+          <h2>Run Info</h2>
+          <pre id="run-info">No requests yet.</pre>
+        </div>
+        <div>
+          <h2>Tool Log</h2>
+          <pre id="tool-log">No tool calls yet.</pre>
+        </div>
+      </section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

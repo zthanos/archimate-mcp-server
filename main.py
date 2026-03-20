@@ -1,5 +1,4 @@
-def main():
-    print("Hello from archimate-mcp-server!")
+from archimate_mcp.server import main
 
 
 if __name__ == "__main__":

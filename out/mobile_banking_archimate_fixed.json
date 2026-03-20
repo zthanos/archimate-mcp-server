@@ -1,0 +1,75 @@
+{
+  "model": {
+    "id": "mobile_banking_model",
+    "name": "Mobile Banking Architecture"
+  },
+  "elements": [
+    {
+      "id": "customer",
+      "type": "BusinessActor",
+      "name": "Customer"
+    },
+    {
+      "id": "mobile_banking_app",
+      "type": "ApplicationComponent",
+      "name": "Mobile Banking App"
+    },
+    {
+      "id": "api_gateway",
+      "type": "ApplicationComponent",
+      "name": "API Gateway"
+    },
+    {
+      "id": "core_banking_system",
+      "type": "ApplicationComponent",
+      "name": "Core Banking System"
+    },
+    {
+      "id": "account_data",
+      "type": "DataObject",
+      "name": "Account Data"
+    },
+    {
+      "id": "banking_database",
+      "type": "Node",
+      "name": "Banking Database"
+    }
+  ],
+  "relationships": [
+    {
+      "id": "rel_app_serves_customer",
+      "type": "Serving",
+      "source": "mobile_banking_app",
+      "target": "customer",
+      "name": "serves"
+    },
+    {
+      "id": "rel_app_calls_gateway",
+      "type": "Flow",
+      "source": "mobile_banking_app",
+      "target": "api_gateway",
+      "name": "calls"
+    },
+    {
+      "id": "rel_gateway_routes_core",
+      "type": "Flow",
+      "source": "api_gateway",
+      "target": "core_banking_system",
+      "name": "routes requests"
+    },
+    {
+      "id": "rel_core_reads_account_data",
+      "type": "Access",
+      "source": "core_banking_system",
+      "target": "account_data",
+      "name": "reads"
+    },
+    {
+      "id": "rel_database_serves_core",
+      "type": "Serving",
+      "source": "banking_database",
+      "target": "core_banking_system",
+      "name": "hosts data access"
+    }
+  ]
+}

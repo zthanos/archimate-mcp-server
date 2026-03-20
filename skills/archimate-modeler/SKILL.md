@@ -77,7 +77,12 @@ Ask for clarification only when the instruction is genuinely ambiguous and multi
 
 - Validate before generating exports intended for handoff or import.
 - Never claim a model is valid unless validation returned success.
+- Never hand-write ArchiMate Exchange XML from memory. Use `generate_archimate_exchange_xml` or `generate_archimate_exchange_file` for all exports.
+- If an MCP tool call fails or is unavailable, stop and report the failure. Do not fabricate tool results, model validity, XML, or file paths.
 - Prefer specific ArchiMate relationship types over `Association` when the semantics are clear.
+- Only use the canonical relationship types supported by this server:
+  `Serving`, `Access`, `Assignment`, `Realization`, `Composition`, `Aggregation`, `Association`, `Flow`, `Triggering`.
+- Do not invent aliases or schema-specific names such as `UsedBy`, `UsedByRelationship`, `AccessRelationship`, `TriggeringRelationship`, or `RealizationRelationship`.
 - Keep IDs stable when iterating on an existing model.
 - Do not invent elements, layers, or relationships that are not supported by the input or by ArchiMate rules.
 - Do not expose raw JSON unless the user asks for it or the workflow requires it.

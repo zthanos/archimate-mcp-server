@@ -1,0 +1,26 @@
+services:
+  archimate-mcp-server:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      ARCHIMATE_MCP_TRANSPORT: streamable-http
+      FASTMCP_HOST: 0.0.0.0
+      FASTMCP_PORT: "8000"
+      ARCHIMATE_MCP_LLM_PROVIDER: openai
+      ARCHIMATE_MCP_LLM_BASE_URL: http://host.docker.internal:1234/v1
+      ARCHIMATE_MCP_LLM_MODEL: qwen/qwen3-coder-30b
+      ARCHIMATE_MCP_LLM_API_KEY: lm-studio
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+  archimate-mcp-web:
+    build: .
+    command: ["archimate-mcp-web"]
+    depends_on:
+      - archimate-mcp-server
+    ports:
+      - "8080:8080"
+    environment:
+      ARCHIMATE_MCP_SERVER_URL: http://archimate-mcp-server:8000/mcp
+      ARCHIMATE_MCP_WEB_HOST: 0.0.0.0
+      ARCHIMATE_MCP_WEB_PORT: "8080"
